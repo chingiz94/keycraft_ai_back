@@ -3,5 +3,6 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->json(['name' => 'KeyCraft AI Backend', 'api' => '/api/v1', 'health' => '/api/v1/health', 'openapi' => '/openapi.json', 'documentation' => 'docs/README.md']);
 });
+Route::get('/openapi.json', fn () => response()->file(base_path('docs/openapi.json'), ['Content-Type' => 'application/json']));
