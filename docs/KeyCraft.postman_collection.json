@@ -1,0 +1,1387 @@
+{
+  "info": {
+    "name": "KeyCraft AI — Backend API",
+    "description": "Локальная коллекция всех API операций. Импортируйте в Postman, задайте email/password для покупателя и admin_email/admin_password для администратора. Секреты не включены. base_url уже включает /api/v1. Регистрация и вход автоматически сохраняют token, регистрация/вход покупателя также user_id. Создание сборки/позиции/заказа/предложения сохраняет ID. Все деньги — целые тиыны KZT. Перед checkout проверьте сборку и обновите expected_total; 6056000 — учебный набор65. Повтор идентичного checkout с тем же idempotency_key возвращает200 без двойного списания; для новой покупки задайте новый ключ. Запросы изменяют локальные данные: выполняйте по одному, это не безопасный автоматический runner для существующей БД. Админ-каталог использует admin_component_id созданного тестового компонента; публичный каталог и сборки используют component_id. ИИ требует настройки серверного ключа и возвращает503 без него. Полный контракт: openapi.json.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8120/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "buyer@keycraft.test",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@keycraft.test",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "component_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "admin_component_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "build_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "order_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "offer_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "idempotency_key",
+      "value": "checkout-65-001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Вход и текущий пользователь",
+      "description": "Запросы выполняйте по одному. Примеры ID относятся к свежему локальному каталогу.",
+      "item": [
+        {
+          "name": "POST Регистрация покупателя",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/auth/register",
+            "description": "Лимит регистрации и входа: общие 10 запросов в минуту на IP. Поле role запрещено. Пароль подтверждается password_confirmation: минимум 8 символов, максимум 72 байта UTF-8, без NUL. Смена роли при регистрации запрещена.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Покупатель\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"password_confirmation\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.token) pm.collectionVariables.set(\"token\", body.token);",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"user_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Вход по email и паролю",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/auth/login",
+            "description": "Неверный email или пароль возвращает общее сообщение без раскрытия существования email. 10 запросов в минуту на IP. Пароль не длиннее 72 байт UTF-8, без NUL; неверный формат даёт 422.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.token) pm.collectionVariables.set(\"token\", body.token);",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"user_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Текущий пользователь",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/auth/me",
+            "description": "Доступ: buyer или admin. "
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02. Открытый каталог",
+      "description": "Запросы выполняйте по одному. Примеры ID относятся к свежему локальному каталогу.",
+      "item": [
+        {
+          "name": "GET Проверка доступности API и БД",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/health",
+            "description": "Публичная проверка соединения с БД. При ошибке БД — 503, сообщение «База данных недоступна».",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Каталог с поиском, фильтрами и пагинацией",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/components?format=65&in_stock=1&sort=price&order=asc&per_page=20&page=1",
+            "description": "По умолчанию 20 элементов, сортировка name asc. Связь offers в списке не загружается; для предложений используйте карточку или отдельный маршрут.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Карточка компонента",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/components/{{component_id}}",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Предложения выбранного компонента",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/components/{{component_id}}/offers?page=1&per_page=20",
+            "description": "Переход по URL маркетплейса не создаёт заказ KeyCraft.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03. Сборки — buyer",
+      "description": "Запросы выполняйте по одному. Примеры ID относятся к свежему локальному каталогу.",
+      "item": [
+        {
+          "name": "GET Список своих сборок",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds?page=1&per_page=20",
+            "description": "Доступ: buyer. "
+          },
+          "response": []
+        },
+        {
+          "name": "POST Создать свою сборку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds",
+            "description": "Доступ: buyer. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Моя клавиатура 65%\",\n  \"budget\": 10000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"build_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Сборка с позициями",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}",
+            "description": "Доступ: buyer, только владелец. Чужая существующая сборка — 403, отсутствующая — 404."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Изменить название/бюджет сборки",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}",
+            "description": "Доступ: buyer, только владелец. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Обновлённая сборка\",\n  \"budget\": 10000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Изменить название/бюджет сборки",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}",
+            "description": "Доступ: buyer, только владелец. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Обновлённая сборка\",\n  \"budget\": 10000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Удалить свою сборку",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}",
+            "description": "Доступ: buyer, только владелец. Позиции удаляются каскадно, история заказов сохраняется (build_id становится null)."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Добавить компонент в сборку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items",
+            "description": "Доступ: buyer, только владелец. Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": {{component_id}},\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"item_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH Изменить количество позиции",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items/{{item_id}}",
+            "description": "Доступ: buyer, только владелец. Позиция из другой сборки возвращает 404. component_id запрещён.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Удалить позицию",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items/{{item_id}}",
+            "description": "Доступ: buyer, только владелец. Позиция должна относиться к указанной сборке, иначе 404."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Проверить полноту и совместимость",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/validate",
+            "description": "Доступ: buyer, только владелец. Возвращает 200 и результат проверки даже при compatible=false. Отсутствующие характеристики перечисляются в unverified. Проверяются format, mount, switch_type, stem, layout, key_count, stabilizers. Остатки проверяет оформление заказа; эта операция их не резервирует."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03b. Наполнить свежую сборку 65% (ID 1–6)",
+      "description": "После POST /builds выполните эти 6 запросов. ID действуют только для свежего DatabaseSeeder: case1 pcb2 plate3 stabilizer4 switch5 keycap6. При другом каталоге замените ID. Не запускайте после общего запроса добавления case, иначе ожидается 409 повтора.",
+      "item": [
+        {
+          "name": "POST case × 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items",
+            "description": "Доступ: buyer, только владелец. Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": 1,\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"item_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST pcb × 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items",
+            "description": "Доступ: buyer, только владелец. Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": 2,\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"item_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST plate × 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items",
+            "description": "Доступ: buyer, только владелец. Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": 3,\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"item_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST stabilizer × 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items",
+            "description": "Доступ: buyer, только владелец. Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": 4,\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"item_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST switch × 67",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items",
+            "description": "Доступ: buyer, только владелец. Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": 5,\n  \"quantity\": 67\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"item_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST keycap × 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/builds/{{build_id}}/items",
+            "description": "Доступ: buyer, только владелец. Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": 6,\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"item_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Заказы — buyer/admin",
+      "description": "Запросы выполняйте по одному. Примеры ID относятся к свежему локальному каталогу.",
+      "item": [
+        {
+          "name": "GET Список заказов",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/orders?page=1&per_page=20",
+            "description": "Доступ: buyer (свои) или admin (все). "
+          },
+          "response": []
+        },
+        {
+          "name": "GET Заказ с зафиксированными ценами",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/orders/{{order_id}}",
+            "description": "Доступ: buyer-владелец или admin. Чужой заказ — 403. unit_price — историческая цена, component.price может измениться."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Оформить полную совместимую сборку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotency_key}}"
+              }
+            ],
+            "url": "{{base_url}}/orders",
+            "description": "Доступ: buyer, только владелец сборки. Сумма рассчитывается сервером. 422: неполнота, несовместимость или непроверенные параметры. 409: недостаток остатка, изменившаяся сумма, тот же ключ с другим телом. При смене цены errors.current_total содержит [новая_сумма]. Для новой подтверждённой суммы нужен новый ключ. Идентичный повтор с прежним ключом и телом возвращает 200 с прежним заказом, даже если исходная сборка уже удалена. Запись заказа/позиций и списание остатков атомарны. Денежное списание не выполняется.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"build_id\": {{build_id}},\n  \"expected_total\": 6056000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"order_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05. Настоящий ИИ — buyer",
+      "description": "Запросы выполняйте по одному. Примеры ID относятся к свежему локальному каталогу.",
+      "item": [
+        {
+          "name": "POST Подбор настоящей языковой моделью",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ai/recommendations",
+            "description": "Доступ: buyer. Лимит 10 запросов/минуту на пользователя. Внешний OpenAI Responses API, таймаут 30 секунд. Ключ только на сервере. Передаются каталог, бюджет, формат и preferences; не добавляйте в preferences личные данные. Ответ модели повторно проверяется по текущим ID, количествам, совместимости, остатку и бюджету. Сборка автоматически не сохраняется, товары не резервируются. При невалидном ответе/отсутствующем ключе/сбое — 503 без имитации. Если совместимый набор не найден — 422.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"budget\": 10000000,\n  \"format\": \"65\",\n  \"preferences\": \"Тихие линейные свитчи для работы\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06. Каталог — admin",
+      "description": "Нужен токен администратора: выполните вход с admin_email/admin_password. Изменения настоящие, выполняйте запросы по одному на локальных данных.",
+      "item": [
+        {
+          "name": "POST Вход администратора (сменит token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/auth/login",
+            "description": "Неверный email или пароль возвращает общее сообщение без раскрытия существования email. 10 запросов в минуту на IP. Пароль не длиннее 72 байт UTF-8, без NUL; неверный формат даёт 422.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.token) pm.collectionVariables.set(\"token\", body.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Администратор: список компонентов",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/components?format=65&in_stock=1&sort=price&order=asc&per_page=20&page=1",
+            "description": "Доступ: admin. "
+          },
+          "response": []
+        },
+        {
+          "name": "POST Создать компонент",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/components",
+            "description": "Доступ: admin. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Новый корпус 65%\",\n  \"type\": \"case\",\n  \"price\": 1800000,\n  \"stock\": 20,\n  \"format\": \"65\",\n  \"specs\": {\n    \"mount\": \"gasket\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"admin_component_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Администратор: карточка компонента",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/components/{{admin_component_id}}",
+            "description": "Доступ: admin. "
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Изменить компонент",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/components/{{admin_component_id}}",
+            "description": "Доступ: admin. Частичное обновление. specs заменяется целиком, не объединяется.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1800000,\n  \"stock\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Изменить компонент",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/components/{{admin_component_id}}",
+            "description": "Доступ: admin. Частичное обновление. specs заменяется целиком, не объединяется.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1800000,\n  \"stock\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Удалить неиспользуемый компонент",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/components/{{admin_component_id}}",
+            "description": "Доступ: admin. Если компонент есть в сборке или заказе — 409. Его предложения удаляются в той же транзакции."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07. Предложения — admin",
+      "description": "Нужен токен администратора: выполните вход с admin_email/admin_password. Изменения настоящие, выполняйте запросы по одному на локальных данных.",
+      "item": [
+        {
+          "name": "GET Все предложения",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/offers?page=1&per_page=20",
+            "description": "Доступ: admin. "
+          },
+          "response": []
+        },
+        {
+          "name": "POST Создать предложение",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/offers",
+            "description": "Доступ: admin. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": {{component_id}},\n  \"marketplace\": \"Магазин\",\n  \"url\": \"https://example.com/keyboard-case\",\n  \"price\": 1800000,\n  \"price_updated_at\": \"2026-11-07T10:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set(\"offer_id\", String(body.data.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Карточка предложения",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/offers/{{offer_id}}",
+            "description": "Доступ: admin. "
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Изменить предложение",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/offers/{{offer_id}}",
+            "description": "Доступ: admin. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1750000,\n  \"price_updated_at\": \"2026-11-07T10:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Изменить предложение",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/offers/{{offer_id}}",
+            "description": "Доступ: admin. ",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1750000,\n  \"price_updated_at\": \"2026-11-07T10:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Удалить предложение",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/offers/{{offer_id}}",
+            "description": "Доступ: admin. "
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08. Заказы — admin",
+      "description": "Нужен токен администратора: выполните вход с admin_email/admin_password. Изменения настоящие, выполняйте запросы по одному на локальных данных.",
+      "item": [
+        {
+          "name": "GET Все заказы администратора",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/orders?page=1&per_page=20",
+            "description": "Доступ: admin. "
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Провести или отменить заказ",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/orders/{{order_id}}/status",
+            "description": "Доступ: admin. Цепочка new → confirmed → assembled → issued. Отмена new/confirmed → cancelled возвращает остатки один раз в транзакции. Повтор отмены и остальные переходы — 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "09. Пользователи — admin",
+      "description": "Нужен токен администратора: выполните вход с admin_email/admin_password. Изменения настоящие, выполняйте запросы по одному на локальных данных.",
+      "item": [
+        {
+          "name": "GET Список пользователей",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/users?page=1&per_page=20",
+            "description": "Доступ: admin. "
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Изменить роль пользователя",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/users/{{user_id}}/role",
+            "description": "Доступ: admin. Понижение последнего администратора запрещено (409). Роль проверяется на каждом запросе; токены не меняют роль самостоятельно.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"buyer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Статистика — admin",
+      "description": "Нужен токен администратора: выполните вход с admin_email/admin_password. Изменения настоящие, выполняйте запросы по одному на локальных данных.",
+      "item": [
+        {
+          "name": "GET Сводка заказов и выручки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/admin/statistics",
+            "description": "Доступ: admin. orders_by_status — количество и сумма заказов по каждому существующему статусу. issued_revenue — сумма только выданных заказов. Суммы в тиынах KZT."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11. Выход",
+      "item": [
+        {
+          "name": "POST Отзыв текущего токена",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/auth/logout",
+            "description": "Доступ: buyer или admin. Другие токены пользователя сохраняются."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

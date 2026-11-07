@@ -42,7 +42,7 @@ erDiagram
 | orders.user_id → users.id | RESTRICT | История покупок должна сохраняться |
 | build_items.build_id → builds.id | CASCADE | Позиция сборки отдельно не существует |
 | build_items.component_id → components.id | RESTRICT | Используемый компонент нельзя удалить |
-| marketplace_offers.component_id → components.id | RESTRICT | Предложения требуется удалить перед компонентом |
+| marketplace_offers.component_id → components.id | RESTRICT | CatalogService удаляет предложения перед удалением неиспользуемого компонента в той же транзакции |
 | orders.build_id → builds.id | SET NULL | Удаление сборки не удаляет заказ |
 | order_items.order_id → orders.id | CASCADE | Позиция заказа отдельно не существует |
 | order_items.component_id → components.id | RESTRICT | Купленный компонент нельзя удалить |
@@ -110,3 +110,85 @@ php artisan db:seed
 ```
 
 Миграция предметной схемы — `2026_11_08_000001_create_keycraft_tables.php`. Откат удаляет таблицы в обратном порядке зависимостей и поле роли. `migrate:fresh` уничтожает существующие данные и предназначен только для отдельной тестовой БД.
+
+## Экспорт физической схемы MySQL
+
+`database/schema/mysql.sql` — экспорт DDL фактически созданной MySQL схемы: семь предметных таблиц и `personal_access_tokens` Sanctum. Данных пользователей, паролей, токенов, заказов и секретов подключения в файле нет. Экспорт не включает служебную таблицу `migrations`, поэтому штатное развёртывание приложения выполняется Laravel миграциями, а SQL служит для просмотра и отдельной проверки физической модели.
+
+08.11.2026 файл успешно импортирован в новую отдельную БД `keycraft_schema_check`: MySQL показал 8 таблиц и 8 внешних ключей. Рабочие таблицы при этой проверке не изменялись. SQL содержит команды `DROP TABLE IF EXISTS`, поэтому повторный импорт допустим только в выделенную проверочную БД без нужных данных.
+
+## Примеры JOIN-запросов
+
+Ниже определения пяти запросов для изучения связей. Значения результатов зависят от содержимого БД; эти примеры не являются отчётом об исполнении. Для запросов к сборкам/заказам задайте `@user_id` идентификатором нужного покупателя. В приложении проверка владения выполняется серверными policies и фильтрами, а клиент не получает прямой доступ к SQL.
+
+1. Каталог с числом предложений и минимальной внешней ценой. `LEFT JOIN` сохраняет компоненты без предложений.
+
+```sql
+SELECT c.id, c.name, c.type, c.price AS own_price,
+       COUNT(mo.id) AS offer_count, MIN(mo.price) AS lowest_offer_price
+FROM components AS c
+LEFT JOIN marketplace_offers AS mo ON mo.component_id = c.id
+GROUP BY c.id, c.name, c.type, c.price
+ORDER BY c.id;
+```
+
+2. Подробный состав сборок выбранного покупателя с именем владельца.
+
+```sql
+SET @user_id = 1; -- Замените на ID покупателя.
+SELECT b.id AS build_id, b.name AS build_name, u.name AS owner_name,
+       c.id AS component_id, c.name AS component_name, c.type,
+       bi.quantity, c.price AS unit_price,
+       bi.quantity * c.price AS line_total
+FROM builds AS b
+JOIN users AS u ON u.id = b.user_id
+JOIN build_items AS bi ON bi.build_id = b.id
+JOIN components AS c ON c.id = bi.component_id
+WHERE b.user_id = @user_id
+ORDER BY b.id, bi.id;
+```
+
+3. Актуальная стоимость сборок и отклонение от бюджета. Пустая сборка имеет нулевую сумму. Это только расчёт цены: он не заменяет проверку совместимости и остатков.
+
+```sql
+SELECT b.id, b.name, b.budget,
+       COALESCE(SUM(bi.quantity * c.price), 0) AS current_total,
+       CAST(b.budget AS SIGNED) - CAST(COALESCE(SUM(bi.quantity * c.price), 0) AS SIGNED)
+           AS budget_remaining
+FROM builds AS b
+LEFT JOIN build_items AS bi ON bi.build_id = b.id
+LEFT JOIN components AS c ON c.id = bi.component_id
+WHERE b.user_id = @user_id
+GROUP BY b.id, b.name, b.budget
+ORDER BY b.id;
+```
+
+4. История позиций заказов покупателя. Сумма позиции рассчитывается по исторической `unit_price`, а не по текущей цене каталога.
+
+```sql
+SELECT o.id AS order_id, o.status, o.created_at, u.name AS buyer_name,
+       c.name AS component_name, oi.quantity, oi.unit_price,
+       oi.quantity * oi.unit_price AS purchased_line_total
+FROM orders AS o
+JOIN users AS u ON u.id = o.user_id
+JOIN order_items AS oi ON oi.order_id = o.id
+JOIN components AS c ON c.id = oi.component_id
+WHERE o.user_id = @user_id
+ORDER BY o.id DESC, oi.id;
+```
+
+5. Популярность компонентов и выручка по выданным заказам. Отменённые заказы не входят в продажи.
+
+```sql
+SELECT c.id, c.name, c.type,
+       SUM(oi.quantity) AS issued_quantity,
+       SUM(oi.quantity * oi.unit_price) AS issued_revenue
+FROM components AS c
+JOIN order_items AS oi ON oi.component_id = c.id
+JOIN orders AS o ON o.id = oi.order_id
+WHERE o.status = 'issued'
+GROUP BY c.id, c.name, c.type
+ORDER BY issued_quantity DESC, c.id;
+```
+
+Все денежные результаты этих запросов также выражены в тиынах KZT.

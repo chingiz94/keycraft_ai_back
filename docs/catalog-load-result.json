@@ -1,0 +1,28 @@
+{
+    "verified_on": "2026-11-08",
+    "result": "passed",
+    "database": "keycraft_test",
+    "catalog_rows": 1000,
+    "concurrent_clients": 20,
+    "waves": 5,
+    "measured_requests": 100,
+    "valid_200_responses": 100,
+    "page_size": 20,
+    "pages_exercised": 50,
+    "latency_ms": {
+        "min": 66.181,
+        "median": 721.178,
+        "p95": 1330.284,
+        "max": 1490.33
+    },
+    "observed_p95_within_2_seconds": true,
+    "total_duration_ms": 6924,
+    "environment": {
+        "php": "8.5.1",
+        "os": "Windows",
+        "http_server": "Temporary PHP built-in server on local port 8121",
+        "measurement_scope": "Observed local result. CPU and RAM were not constrained to 2 CPU / 4 GB; formal acceptance on that hardware profile remains unverified."
+    },
+    "ai_requests_included": false,
+    "fixtures_retained": true
+}

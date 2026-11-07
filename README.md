@@ -1,58 +1,86 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# KeyCraft AI — backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+REST API конструктора механических клавиатур по вашему ТЗ. Бэкенд: Нукушев Чингиз; фронтенд по ТЗ: Алимканов Жасулан. PHP 8.3+, Laravel 13, MySQL 8.4 / InnoDB, Laravel Sanctum.
 
-## About Laravel
+## Возможности
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Регистрация, Bearer токены на 24 часа, выход с отзывом текущего токена.
+- Каталог шести типов деталей, поиск, фильтры, сортировка, пагинация (20 по умолчанию), предложения маркетплейсов с датой цены.
+- Личные сборки и состав; проверка формата, крепления, свитчей, кейкапов и стабилизаторов. Неизвестные характеристики блокируют заказ.
+- Серверный расчёт, подтверждение суммы, идемпотентность, транзакции и блокировки остатков.
+- Статусы new → confirmed → assembled → issued; отмена new/confirmed с однократным возвратом остатков.
+- Администрирование каталога, предложений, ролей, заказов; статистика.
+- Настоящий ИИ через OpenAI Responses API с проверкой ID, количества, совместимости, бюджета и наличия. Без ключа возвращается 503.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Все суммы — целые тиыны KZT: 6056000 = 60 560 ₸. Цена свитча — за штуку, прочих деталей — за комплект. Начальные цены и остатки учебные; ссылки сидера ведут на поиск товаров.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Установка
 
-## Learning Laravel
+Нужны PHP с pdo_mysql, mbstring, openssl, fileinfo, curl, xml, ctype, tokenizer, Composer и MySQL. Тестам нужен pdo_sqlite. Каталоги storage и bootstrap/cache должны быть доступны на запись.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```sh
+composer install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Скопируйте .env.example в .env. Создайте отдельную MySQL базу keycraft с utf8mb4. Задайте DB_*, APP_URL и точный адрес фронтенда FRONTEND_URL (по умолчанию http://localhost:5173). Пароль MySQL задаётся вами.
 
-## Contributing
+```sh
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve --host=127.0.0.1 --port=8120
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Проверка: [health](http://127.0.0.1:8120/api/v1/health), [каталог](http://127.0.0.1:8120/api/v1/components), [OpenAPI](http://127.0.0.1:8120/openapi.json). Health проверяет соединение с БД. Прикладной API имеет префикс /api/v1.
 
-## Code of Conduct
+## Демонстрация и администратор
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Установите в .env собственные разные DEMO_ADMIN_PASSWORD и DEMO_BUYER_PASSWORD (8–72 байта, без нулевого байта), затем:
 
-## Security Vulnerabilities
+```sh
+php artisan db:seed --class=CourseworkSeeder
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Создаются admin@keycraft.test и пять покупателей buyer@keycraft.test, buyer2@keycraft.test … buyer5@keycraft.test, 12 компонентов, 12 предложений, 6 полных сборок и 5 заказов в разных статусах. Пароли берутся из .env. Повторный сидер не создаёт заказы и не возвращает проданные остатки. Существующие пароли не перезаписываются. Учебное наполнение запускайте только в локальной базе. После наполнения переменные паролей можно удалить из .env.
 
-## License
+Обычный DatabaseSeeder без переменных паролей создаёт только каталог. Пароли подготовленной локальной демонстрации находятся в local-access.txt рядом с каталогом проекта; файл не входит в Git или архив исходников.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Подключение фронтенда
+
+Импортируйте [OpenAPI](docs/openapi.json) и [Postman](docs/KeyCraft.postman_collection.json). В Postman задайте base_url и пустые переменные паролей; вход автоматически сохраняет токен. Поля, роли, примеры и коды ответов описаны в OpenAPI.
+
+Передавайте Accept: application/json, Content-Type: application/json и Authorization: Bearer <token> на защищённых маршрутах. Регистрация требует password_confirmation; роль при регистрации назначать нельзя. Клиент не передаёт стоимость деталей.
+
+Для заказа сначала получите total через POST /builds/{id}/validate. Затем:
+
+```http
+POST /api/v1/orders
+Authorization: Bearer <token>
+Idempotency-Key: checkout-unique-001
+Content-Type: application/json
+
+{"build_id":1,"expected_total":6056000}
+```
+
+Новый заказ: 201. Повтор с тем же телом и ключом: 200 и прежний заказ. Тот же ключ с другим телом: 409. При изменении цены 409 содержит errors.current_total[0]: после подтверждения пользователем используйте новый ключ. При сетевом повторе сохраняйте прежний ключ. Цена маркетплейса не участвует в локальном заказе.
+
+Ошибки имеют message и errors: 401 — вход, 403 — права, 404 — запись отсутствует, 409 — конфликт, 422 — данные/совместимость, 429 — лимит, 503 — БД/ИИ недоступны. SQL и секреты не возвращаются. ИИ: 10 запросов/минуту на пользователя; регистрация/вход: 10/минуту на IP. CORS разрешает только настроенный origin.
+
+## ИИ
+
+Укажите OPENAI_API_KEY и при необходимости OPENAI_MODEL, затем выполните php artisan config:clear. Ключ хранится на сервере. По умолчанию модель gpt-4.1-mini; доступ и оплата API зависят от аккаунта провайдера. Текст пожеланий отправляется провайдеру вместе с разрешёнными данными каталога: не вводите в него персональные сведения. Подбор не сохраняется автоматически. Подробнее: [ИИ](docs/ai.md).
+
+## Проверки
+
+```sh
+php artisan test
+php vendor/bin/pint --test
+php artisan route:list --path=api
+```
+
+Обычные тесты используют SQLite в памяти. Реальные блокировки и нагрузка проверяются tests/mysql-concurrency.php и tests/catalog-load.php. Они требуют явного DB_CONNECTION=mysql и DB_DATABASE=keycraft_test на локальной MySQL; сначала примените миграции к отдельной тестовой базе. Скрипты добавляют тестовые данные. Результаты запуска: [проверки](docs/verification.md).
+
+## Архитектура и границы
+
+Form Request проверяет данные; контроллеры принимают HTTP; Resources формируют JSON; Policies и middleware проверяют права; Services содержат бизнес-логику; модели Eloquent — связи. [Схема БД](docs/database.md), [SQL DDL](database/schema/mysql.sql).
+
+Онлайн-оплата, доставка и автопарсинг не входят в версию по ТЗ. Реальный вызов ИИ требует вашего ключа: тесты с контролируемыми ответами не подтверждают доступ к провайдеру. Совместная проверка с отдельным фронтендом остаётся после его подключения. Файлы в Google Classroom не отправлялись. Для размещения используйте HTTPS, APP_DEBUG=false, отдельного пользователя MySQL и Nginx/Apache с корнем public; artisan serve предназначен для локального запуска.

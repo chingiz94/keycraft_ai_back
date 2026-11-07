@@ -1,0 +1,32 @@
+{
+  "verified_on": "2026-11-08",
+  "result": "passed",
+  "database": "keycraft_test",
+  "engine": "InnoDB",
+  "parallel_workers_per_scenario": 2,
+  "scenarios": {
+    "last_stock": [
+      {"status": 409, "error": "Недостаточно товара на складе."},
+      {"status": 201, "order_id": 7, "total": 34700}
+    ],
+    "idempotency": [
+      {"status": 201, "order_id": 8, "total": 34700},
+      {"status": 200, "order_id": 8, "total": 34700}
+    ],
+    "cancel_once": [
+      {"status": 409, "error": "Недопустимый переход статуса заказа."},
+      {"status": 200, "order_id": 8, "total": 34700}
+    ]
+  },
+  "duration_ms": 2550,
+  "assertions": [
+    "Exactly one order created for two buyers competing for the last shared components",
+    "Stock never went below zero and was decremented exactly once",
+    "Concurrent requests with one idempotency key returned one order",
+    "Concurrent cancellations returned each component to stock exactly once"
+  ],
+  "fixtures_retained": [
+    "concurrency-stock-e71cf822-a9fa-45ab-8fb8-1e4eaf715be3",
+    "concurrency-idempotency-7e24141a-b523-49fa-bbdf-9c743962c94c"
+  ]
+}
