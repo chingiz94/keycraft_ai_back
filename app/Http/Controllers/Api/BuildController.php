@@ -76,6 +76,6 @@ class BuildController extends Controller
     {
         Gate::authorize('view', $build);
 
-        return response()->json(['data' => $this->builds->validate($build,$compatibility)]);
+        return response()->json(['data' => $this->builds->validate($build, $compatibility)]);
     }
 }

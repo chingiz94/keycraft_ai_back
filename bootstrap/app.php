@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureRole;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -35,6 +36,9 @@ return Application::configure(basePath: dirname(__DIR__))
             }
             if ($e instanceof ValidationException) {
                 return response()->json(['message' => 'Ошибка валидации', 'errors' => $e->errors()], 422);
+            }
+            if ($e instanceof QueryException && in_array($e->getCode(), ['23000', '23503', '23505'], true)) {
+                return response()->json(['message' => 'Изменение конфликтует со связанными данными. Обновите данные и повторите запрос.', 'errors' => (object) []], 409);
             }
             $status = match (true) {
                 $e instanceof AuthenticationException => 401,

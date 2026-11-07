@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketplaceOffer extends Model
 {
     use HasFactory;
+
     protected $fillable = ['component_id', 'marketplace', 'url', 'price', 'price_updated_at'];
 
     protected function casts(): array

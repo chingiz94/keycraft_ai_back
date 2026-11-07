@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BuildItem extends Model
 {
     use HasFactory;
+
     protected $fillable = ['build_id', 'component_id', 'quantity'];
 
     protected function casts(): array

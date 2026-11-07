@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     use HasFactory;
+
     protected $fillable = ['user_id', 'build_id', 'status', 'total', 'idempotency_key', 'request_hash'];
 
     protected $hidden = ['request_hash', 'idempotency_key'];

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Build extends Model
 {
     use HasFactory;
+
     protected $fillable = ['user_id', 'name', 'budget'];
 
     protected function casts(): array

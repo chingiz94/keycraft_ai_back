@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Component extends Model
 {
     use HasFactory;
+
     protected $fillable = ['name', 'type', 'price', 'stock', 'format', 'specs'];
 
     protected function casts(): array

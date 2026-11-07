@@ -6,6 +6,6 @@ class LoginRequest extends ApiRequest
 {
     public function rules(): array
     {
-        return ['email' => 'required|email|max:254', 'password' => 'required|string|max:200'];
+        return ['email' => 'required|email|max:254', 'password' => ['required', 'string', 'max:72', $this->bcryptPasswordRule()]];
     }
 }
