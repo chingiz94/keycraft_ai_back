@@ -19,7 +19,7 @@ class RecommendationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.openai.key' => 'test-secret', 'services.openai.model' => 'gpt-4.1-mini']);
+        config(['services.ai.provider' => 'openai', 'services.openai.key' => 'test-secret', 'services.openai.model' => 'gpt-4.1-mini']);
         Http::preventStrayRequests();
     }
 
@@ -54,6 +54,65 @@ class RecommendationTest extends TestCase
         config(['services.openai.key' => '']);
         $this->assertFailure(503, fn () => app(RecommendationService::class)->recommend($this->input()));
         Http::assertNothingSent();
+    }
+
+    public function test_groq_uses_its_own_key_endpoint_and_supported_payload(): void
+    {
+        $items = $this->catalog();
+        config(['services.ai.provider' => 'groq', 'services.groq.key' => 'groq-test-secret']);
+        Http::fake(['api.groq.com/*' => Http::response([
+            'status' => 'completed',
+            'output' => [
+                ['type' => 'reasoning', 'content' => [['type' => 'reasoning_text', 'text' => 'Internal reasoning is not a recommendation.']]],
+                ['type' => 'message', 'content' => [['type' => 'output_text', 'text' => json_encode(['items' => $items, 'explanation' => 'Совместимая сборка.'])]]],
+            ],
+        ])]);
+        $result = app(RecommendationService::class)->recommend($this->input() + ['email' => 'private@example.test', 'token' => 'private-token']);
+        $this->assertSame(7200, $result['total']);
+        $this->assertSame($items, $result['items']);
+        $this->assertDatabaseCount('builds', 0);
+        Http::assertSent(function (Request $request) {
+            $this->assertTrue($request->hasHeader('Authorization', 'Bearer groq-test-secret'));
+            $this->assertSame('openai/gpt-oss-20b', $request['model']);
+            $this->assertArrayNotHasKey('store', $request->data());
+            $this->assertSame('low', $request['reasoning']['effort']);
+            $this->assertTrue($request['text']['format']['strict']);
+            $this->assertStringNotContainsString('private@example.test', $request->body());
+            $this->assertStringNotContainsString('private-token', $request->body());
+
+            return $request->url() === 'https://api.groq.com/openai/v1/responses';
+        });
+        Http::assertSentCount(1);
+    }
+
+    public function test_missing_groq_key_never_falls_back_to_paid_openai(): void
+    {
+        config(['services.ai.provider' => 'groq', 'services.groq.key' => '']);
+        $this->assertFailure(503, fn () => app(RecommendationService::class)->recommend($this->input()));
+        Http::assertNothingSent();
+    }
+
+    public function test_unknown_provider_is_rejected_before_sending_a_secret(): void
+    {
+        config(['services.ai.provider' => 'https://untrusted.example']);
+        $this->assertFailure(503, fn () => app(RecommendationService::class)->recommend($this->input()));
+        Http::assertNothingSent();
+    }
+
+    public function test_groq_quota_failure_is_sanitized_without_paid_fallback(): void
+    {
+        $this->catalog();
+        config(['services.ai.provider' => 'groq', 'services.groq.key' => 'groq-test-secret']);
+        Http::fake(['api.groq.com/*' => Http::response(['error' => ['message' => 'groq-test-secret provider internals']], 429)]);
+        try {
+            app(RecommendationService::class)->recommend($this->input());
+            $this->fail('Expected provider rejection.');
+        } catch (BusinessException $exception) {
+            $this->assertSame(503, $exception->status);
+            $this->assertStringNotContainsString('groq-test-secret', $exception->getMessage());
+        }
+        Http::assertSentCount(1);
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'api.openai.com'));
     }
 
     public function test_ai_endpoint_is_limited_to_ten_requests_per_user_per_minute(): void

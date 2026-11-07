@@ -1,6 +1,13 @@
 <?php
 
 return [
+    'ai' => [
+        'provider' => env('AI_PROVIDER', 'openai'),
+    ],
+    'groq' => [
+        'key' => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'openai/gpt-oss-20b'),
+    ],
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-4.1-mini'),

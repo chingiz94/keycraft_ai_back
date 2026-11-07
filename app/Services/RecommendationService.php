@@ -14,7 +14,13 @@ class RecommendationService
 
     public function recommend(array $input): array
     {
-        $key = config('services.openai.key');
+        $provider = config('services.ai.provider', 'openai');
+        $endpoint = match ($provider) {
+            'openai' => 'https://api.openai.com/v1/responses',
+            'groq' => 'https://api.groq.com/openai/v1/responses',
+            default => throw new BusinessException('Неизвестный провайдер ИИ в настройках сервера.', 503),
+        };
+        $key = config("services.{$provider}.key");
         if (! is_string($key) || trim($key) === '') {
             throw new BusinessException('Сервис ИИ не настроен.', 503);
         }
@@ -38,7 +44,7 @@ class RecommendationService
             'id', 'name', 'type', 'format', 'price', 'stock', 'specs',
         ]))->values()->all();
         $payload = [
-            'model' => config('services.openai.model', 'gpt-4.1-mini'),
+            'model' => config("services.{$provider}.model"),
             'store' => false,
             'max_output_tokens' => 2500,
             'instructions' => 'Подбери полную совместимую механическую клавиатуру из каталога. '
@@ -81,10 +87,16 @@ class RecommendationService
             ]],
         ];
 
+        if ($provider === 'groq') {
+            // Groq Responses does not accept OpenAI's store parameter.
+            unset($payload['store']);
+            $payload['reasoning'] = ['effort' => 'low'];
+        }
+
         try {
             $response = Http::withToken($key)->acceptJson()->asJson()
                 ->timeout(30)->connectTimeout(5)
-                ->post('https://api.openai.com/v1/responses', $payload);
+                ->post($endpoint, $payload);
         } catch (ConnectionException) {
             throw new BusinessException('Сервис ИИ временно недоступен.', 503);
         }
