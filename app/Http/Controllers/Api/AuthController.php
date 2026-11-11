@@ -10,6 +10,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -17,6 +18,7 @@ class AuthController extends Controller
     {
         $user = User::create($request->safe()->only(['name', 'email', 'password']));
         $user->refresh();
+        Log::channel('api')->info('auth.registered', ['user_id' => $user->id]);
 
         return response()->json(['data' => new UserResource($user), 'token' => $user->createToken('api')->plainTextToken, 'token_type' => 'Bearer'], 201);
     }
@@ -25,8 +27,11 @@ class AuthController extends Controller
     {
         $user = User::where('email', $request->validated('email'))->first();
         if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
+            Log::channel('api')->warning('auth.login_rejected');
             throw new BusinessException('Неверный email или пароль', 401);
         }
+
+        Log::channel('api')->info('auth.logged_in', ['user_id' => $user->id]);
 
         return response()->json(['data' => new UserResource($user), 'token' => $user->createToken('api')->plainTextToken, 'token_type' => 'Bearer']);
     }
@@ -39,6 +44,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
+        Log::channel('api')->info('auth.logged_out', ['user_id' => $request->user()->id]);
 
         return response()->noContent();
     }

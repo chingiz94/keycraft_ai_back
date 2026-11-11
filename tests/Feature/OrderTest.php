@@ -7,7 +7,9 @@ use App\Models\Component;
 use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\Sanctum;
+use Monolog\Handler\TestHandler;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -39,6 +41,8 @@ class OrderTest extends TestCase
 
     public function test_checkout_snapshots_server_prices_and_replay_does_not_decrement_stock_twice(): void
     {
+        $records = new TestHandler;
+        Log::channel('api')->getLogger()->setHandlers([$records]);
         [$buyer, $build, $components] = $this->fixture();
         Sanctum::actingAs($buyer);
         $payload = ['build_id' => $build->id, 'expected_total' => 34800];
@@ -58,6 +62,8 @@ class OrderTest extends TestCase
         $this->assertDatabaseCount('orders', 1);
         $this->assertSame(932, $components['switch']->fresh()->stock);
         $this->assertDatabaseHas('order_items', ['order_id' => $id, 'component_id' => $components['switch']->id, 'unit_price' => 100]);
+        $createdEvents = array_filter($records->getRecords(), fn ($record) => $record->message === 'order.created');
+        $this->assertCount(1, $createdEvents);
     }
 
     public function test_reusing_idempotency_key_with_changed_payload_is_a_conflict(): void
@@ -155,6 +161,8 @@ class OrderTest extends TestCase
 
     public function test_a_write_failure_rolls_back_order_items_and_stock_already_decremented(): void
     {
+        $records = new TestHandler;
+        Log::channel('api')->getLogger()->setHandlers([$records]);
         [$buyer, $build, $components] = $this->fixture();
         Sanctum::actingAs($buyer);
         $dispatcher = OrderItem::getEventDispatcher();
@@ -173,6 +181,7 @@ class OrderTest extends TestCase
         $this->assertSame(2, $count);
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('order_items', 0);
+        $this->assertFalse($records->hasInfo('order.created'));
         foreach ($components as $component) {
             $this->assertSame(1000, $component->fresh()->stock);
         }

@@ -9,6 +9,7 @@ use App\Models\Component;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
@@ -84,6 +85,13 @@ class OrderService
                 $item->component->decrement('stock', $item->quantity);
             }
 
+            DB::afterCommit(fn () => Log::channel('api')->info('order.created', [
+                'order_id' => $order->id,
+                'user_id' => $user->id,
+                'build_id' => $build->id,
+                'total' => $order->total,
+            ]));
+
             return $order->load('items.component');
         }, 3);
     }
@@ -114,6 +122,13 @@ class OrderService
             }
 
             $locked->update(['status' => $status->value]);
+
+            DB::afterCommit(fn () => Log::channel('api')->info('order.status_changed', [
+                'order_id' => $locked->id,
+                'from' => $current->value,
+                'to' => $status->value,
+                'stock_restored' => $status === OrderStatus::Cancelled,
+            ]));
 
             return $locked->load('items.component');
         }, 3);

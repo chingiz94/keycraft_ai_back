@@ -6,6 +6,7 @@ use App\Exceptions\BusinessException;
 use App\Models\Component;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use JsonException;
 
 class RecommendationService
@@ -98,10 +99,12 @@ class RecommendationService
                 ->timeout(30)->connectTimeout(5)
                 ->post($endpoint, $payload);
         } catch (ConnectionException) {
+            Log::channel('api')->error('ai.connection_failed', ['provider' => $provider]);
             throw new BusinessException('Сервис ИИ временно недоступен.', 503);
         }
 
         if (! $response->successful() || $response->json('status') !== 'completed') {
+            Log::channel('api')->error('ai.upstream_failed', ['provider' => $provider, 'http_status' => $response->status()]);
             throw new BusinessException('Сервис ИИ временно недоступен.', 503);
         }
 
