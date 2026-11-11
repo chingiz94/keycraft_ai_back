@@ -4,7 +4,10 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:client": "node --test tests/client-api.test.mjs",
+        "docs:generate": "node docs/generate-api-docs.cjs",
+        "test:collection:generate": "node docs/generate-coursework-tests.cjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
