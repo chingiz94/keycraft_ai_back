@@ -1,0 +1,70 @@
+{
+  "checked_at": "2026-11-18",
+  "documents": [
+    {
+      "file": "KeyCraft_AI_Frontend_Alimkanov_PZ",
+      "pages": 22,
+      "visually_reviewed": 22,
+      "docx_sha256": "1f7b679eee7b18e67f9d80408a1dfaabca9d7290c31cc7b5051c720c4fc823c9",
+      "pdf_sha256": "673e87a28bca88c9b415ee3aa1fcdda87695e5a58421f80ed17b4b369e927288"
+    },
+    {
+      "file": "KeyCraft_AI_Frontend_Alimkanov_Reports",
+      "pages": 10,
+      "visually_reviewed": 10,
+      "docx_sha256": "d4ec26904e31d53af49415b91e5ab7209d2a117073d232c05317445b3f4ba18e",
+      "pdf_sha256": "d6684d3226eed8a15cf107621913285dfeaf7c739530039b7b2bcdd04188c804"
+    }
+  ],
+  "presentation": {
+    "slides": 9,
+    "visually_reviewed": 9,
+    "sha256": "97cab18d3605cd7a3044908ff51a666e25c8f275c46806d957c4b78c8b9a72b6"
+  },
+  "render_comparison": {
+    "pz": {
+      "unchanged_pages_already_reviewed": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22
+      ],
+      "changed_pages_reviewed": [
+        9,
+        18
+      ]
+    },
+    "reports": {
+      "unchanged_pages_already_reviewed": [
+        1,
+        4,
+        5,
+        6
+      ],
+      "changed_pages_reviewed": [
+        2,
+        3,
+        7,
+        8,
+        9,
+        10
+      ]
+    }
+  }
+}

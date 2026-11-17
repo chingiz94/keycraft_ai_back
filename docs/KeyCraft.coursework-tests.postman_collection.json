@@ -1,0 +1,1883 @@
+{
+  "info": {
+    "name": "KeyCraft CP10 regression",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Воспроизводимая проверка на отдельной локальной базе keycraft_demo. Создаёт собственные компоненты, покупателя и отменённый заказ для сохранения доказательств. Не запускать на рабочей БД. Реальный ИИ не вызывается. Для запуска задайте allow_coursework_tests=keycraft_demo, admin_email, admin_password, test_password. Секреты в файл не сохраняются."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8120/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "allow_coursework_tests",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@keycraft.test",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buyer_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const safe = pm.variables.get('allow_coursework_tests') === 'keycraft_demo' && ['http://127.0.0.1:8120/api/v1','http://localhost:8120/api/v1'].includes(pm.variables.get('base_url'));",
+          "if(!safe){pm.test('Разрешён только выделенный локальный стенд',()=>{throw new Error('Нужен allow_coursework_tests=keycraft_demo и локальный API на 8120');});pm.execution.skipRequest();}",
+          "if(pm.info.requestName.startsWith('TC01 ')){const id=pm.variables.replaceIn('{{$guid}}');pm.collectionVariables.set('run_id',id);pm.collectionVariables.set('test_email','cp10.'+id+'@example.test');}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "TC01 API и база доступны",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 1. API и база доступны. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('База доступна', () => pm.expect(pm.response.json().data.database).to.eql('ok'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC02 Гость не читает сборки",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/builds",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 2. Гость не читает сборки. Ожидается HTTP 401. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC03 Вход администратора",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/auth/login",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 3. Вход администратора. Ожидается HTTP 200. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "if(pm.response.code===200) pm.collectionVariables.set('admin_token', pm.response.json().token);",
+              "pm.test('Роль admin',()=>pm.expect(pm.response.json().data.role).to.eql('admin'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC04 Роль нельзя назначить регистрацией",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/auth/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 4. Роль нельзя назначить регистрацией. Ожидается HTTP 422. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Проверка КП10\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"password_confirmation\": \"{{test_password}}\",\n  \"role\": \"admin\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+              "pm.test('Ошибка role',()=>pm.expect(pm.response.json().errors).to.have.property('role'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC05 Регистрация покупателя",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/auth/register",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 5. Регистрация покупателя. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Проверка КП10\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"password_confirmation\": \"{{test_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code===201) pm.collectionVariables.set('buyer_token', pm.response.json().token);",
+              "pm.test('Новая роль buyer',()=>pm.expect(pm.response.json().data.role).to.eql('buyer'));",
+              "pm.test('Пароль отсутствует в ответе',()=>pm.expect(pm.response.json().data).not.to.have.property('password'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC06 Текущий пользователь",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/auth/me",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 6. Текущий пользователь. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Своя учётная запись',()=>pm.expect(pm.response.json().data.email).to.eql(pm.collectionVariables.get('test_email')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC07 Покупателю запрещено администрирование",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/admin/users",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 7. Покупателю запрещено администрирование. Ожидается HTTP 403. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC08 Валидация компонента",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/components",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 8. Валидация компонента. Ожидается HTTP 422. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"\",\n  \"type\": \"unknown\",\n  \"price\": -1,\n  \"stock\": -1,\n  \"specs\": {}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+              "pm.test('Ошибки полей',()=>pm.expect(pm.response.json().errors).to.include.all.keys('name','type','price','stock'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC09 Создать тестовый case",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/components",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 9. Создать тестовый case. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} case\",\n  \"type\": \"case\",\n  \"price\": 10000,\n  \"stock\": 1000,\n  \"format\": \"65\",\n  \"specs\": {\n    \"mount\": \"gasket\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('case_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC10 Создать тестовый pcb",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/components",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 10. Создать тестовый pcb. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} pcb\",\n  \"type\": \"pcb\",\n  \"price\": 7000,\n  \"stock\": 1000,\n  \"format\": \"65\",\n  \"specs\": {\n    \"mount\": \"gasket\",\n    \"switch_type\": \"mx\",\n    \"layout\": \"ansi\",\n    \"key_count\": 68,\n    \"stabilizers\": {\n      \"2u\": 3,\n      \"6.25u\": 1\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('pcb_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC11 Создать тестовый plate",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/components",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 11. Создать тестовый plate. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} plate\",\n  \"type\": \"plate\",\n  \"price\": 4000,\n  \"stock\": 1000,\n  \"format\": \"65\",\n  \"specs\": {\n    \"mount\": \"gasket\",\n    \"switch_type\": \"mx\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('plate_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC12 Создать тестовый stabilizer",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/components",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 12. Создать тестовый stabilizer. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} stabilizer\",\n  \"type\": \"stabilizer\",\n  \"price\": 2000,\n  \"stock\": 1000,\n  \"format\": null,\n  \"specs\": {\n    \"stabilizers\": {\n      \"2u\": 4,\n      \"6.25u\": 1\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('stabilizer_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC13 Создать тестовый switch",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/components",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 13. Создать тестовый switch. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} switch\",\n  \"type\": \"switch\",\n  \"price\": 100,\n  \"stock\": 1000,\n  \"format\": null,\n  \"specs\": {\n    \"switch_type\": \"mx\",\n    \"stem\": \"mx\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('switch_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC14 Создать тестовый keycap",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/components",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 14. Создать тестовый keycap. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} keycap\",\n  \"type\": \"keycap\",\n  \"price\": 5000,\n  \"stock\": 1000,\n  \"format\": null,\n  \"specs\": {\n    \"stem\": \"mx\",\n    \"layout\": \"ansi\",\n    \"key_count\": 104\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('keycap_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC15 Поиск фильтрация и пагинация",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/components?search={{run_id}}&type=case&in_stock=1&sort=price&order=asc&per_page=1&page=1",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 15. Поиск фильтрация и пагинация. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Ровно один корпус',()=>{const b=pm.response.json();pm.expect(b.data.length).to.eql(1);pm.expect(b.data[0].type).to.eql('case');pm.expect(b.meta.total).to.eql(1);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC16 Карточка и связанные предложения",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/components/{{case_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 16. Карточка и связанные предложения. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Связь offers присутствует',()=>pm.expect(pm.response.json().data.offers).to.be.an('array'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC17 Создать предложение",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/admin/offers",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 17. Создать предложение. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{case_id}},\n  \"marketplace\": \"Учебный магазин\",\n  \"url\": \"https://example.test/keycraft\",\n  \"price\": 9000,\n  \"price_updated_at\": \"2026-11-01T10:00:00Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('offer_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC18 Получить предложения компонента",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/components/{{case_id}}/offers",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 18. Получить предложения компонента. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Связанное предложение',()=>pm.expect(pm.response.json().data[0].id).to.eql(Number(pm.collectionVariables.get('offer_id'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC19 Изменить компонент",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/admin/components/{{case_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 19. Изменить компонент. Ожидается HTTP 200. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} case updated\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC20 Создать сборку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 20. Создать сборку. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"CP10 {{run_id}} build\",\n  \"budget\": 1000000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('build_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC21 Неполная сборка не проходит проверку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/validate",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 21. Неполная сборка не проходит проверку. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('complete=false',()=>pm.expect(pm.response.json().data.complete).to.eql(false))"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC22 Добавить case в сборку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/items",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 22. Добавить case в сборку. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{case_id}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "if(pm.response.code === 201) pm.collectionVariables.set('item_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC23 Добавить pcb в сборку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/items",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 23. Добавить pcb в сборку. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{pcb_id}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC24 Добавить plate в сборку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/items",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 24. Добавить plate в сборку. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{plate_id}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC25 Добавить stabilizer в сборку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/items",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 25. Добавить stabilizer в сборку. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{stabilizer_id}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC26 Добавить switch в сборку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/items",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 26. Добавить switch в сборку. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{switch_id}},\n  \"quantity\": 68\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC27 Добавить keycap в сборку",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/items",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 27. Добавить keycap в сборку. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{keycap_id}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC28 Повтор детали запрещён",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/items",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 28. Повтор детали запрещён. Ожидается HTTP 409. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"component_id\": {{case_id}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC29 Совместимая сборка и серверная сумма",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/builds/{{build_id}}/validate",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 29. Совместимая сборка и серверная сумма. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Полнота совместимость и сумма',()=>{const d=pm.response.json().data;pm.expect(d.complete).to.eql(true);pm.expect(d.compatible).to.eql(true);pm.expect(d.total).to.eql(34800);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC30 Устаревшая сумма не создаёт заказ",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/orders",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{run_id}}-stale"
+          }
+        ],
+        "description": "Тест 30. Устаревшая сумма не создаёт заказ. Ожидается HTTP 409. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"build_id\": {{build_id}},\n  \"expected_total\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+              "pm.test('Актуальная сумма в ошибке',()=>pm.expect(pm.response.json().errors.current_total[0]).to.eql(34800));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC31 Оформить заказ",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/orders",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{run_id}}-checkout"
+          }
+        ],
+        "description": "Тест 31. Оформить заказ. Ожидается HTTP 201. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"build_id\": {{build_id}},\n  \"expected_total\": 34800\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.test('Итог и шесть позиций',()=>{const d=pm.response.json().data;pm.expect(d.total).to.eql(34800);pm.expect(d.items.length).to.eql(6);});",
+              "if(pm.response.code === 201) pm.collectionVariables.set('order_id', String(pm.response.json().data.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC32 Повтор не создаёт второй заказ",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/orders",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{run_id}}-checkout"
+          }
+        ],
+        "description": "Тест 32. Повтор не создаёт второй заказ. Ожидается HTTP 200. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"build_id\": {{build_id}},\n  \"expected_total\": 34800\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Тот же заказ',()=>pm.expect(pm.response.json().data.id).to.eql(Number(pm.collectionVariables.get('order_id'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC33 Остаток списан один раз",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/components/{{switch_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 33. Остаток списан один раз. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('1000 - 68 = 932',()=>pm.expect(pm.response.json().data.stock).to.eql(932));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC34 Пропуск статуса запрещён",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/admin/orders/{{order_id}}/status",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 34. Пропуск статуса запрещён. Ожидается HTTP 409. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"issued\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC35 Отмена возвращает остатки",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/admin/orders/{{order_id}}/status",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 35. Отмена возвращает остатки. Ожидается HTTP 200. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"cancelled\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Заказ отменён',()=>pm.expect(pm.response.json().data.status).to.eql('cancelled'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC36 Повторная отмена запрещена",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/admin/orders/{{order_id}}/status",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 36. Повторная отмена запрещена. Ожидается HTTP 409. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"cancelled\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC37 Остаток возвращён ровно один раз",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/components/{{switch_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 37. Остаток возвращён ровно один раз. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Снова 1000',()=>pm.expect(pm.response.json().data.stock).to.eql(1000));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC38 Связанный с заказом компонент не удаляется",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/admin/components/{{case_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 38. Связанный с заказом компонент не удаляется. Ожидается HTTP 409. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC39 Статистика доступна администратору",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/admin/statistics",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 39. Статистика доступна администратору. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Сводка и выручка',()=>pm.expect(pm.response.json().data).to.include.all.keys('orders_by_status','issued_revenue'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC40 Изменить предложение",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/admin/offers/{{offer_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 40. Изменить предложение. Ожидается HTTP 200. ",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"price\": 8500\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Цена обновлена',()=>pm.expect(pm.response.json().data.price).to.eql(8500))"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC41 Удалить созданное предложение",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/admin/offers/{{offer_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_token}}"
+          }
+        ],
+        "description": "Тест 41. Удалить созданное предложение. Ожидается HTTP 204. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC42 Удалить сборку с сохранением заказа",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/builds/{{build_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 42. Удалить сборку с сохранением заказа. Ожидается HTTP 204. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC43 Заказ сохраняется после удаления сборки",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/orders/{{order_id}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 43. Заказ сохраняется после удаления сборки. Ожидается HTTP 200. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('build_id=null',()=>pm.expect(pm.response.json().data.build_id).to.eql(null))"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC44 Неизвестный ресурс",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/components/2147483647",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "description": "Тест 44. Неизвестный ресурс. Ожидается HTTP 404. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC45 Выход покупателя",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/auth/logout",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 45. Выход покупателя. Ожидается HTTP 204. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TC46 Отозванный токен больше не действует",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/auth/me",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{buyer_token}}"
+          }
+        ],
+        "description": "Тест 46. Отозванный токен больше не действует. Ожидается HTTP 401. "
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

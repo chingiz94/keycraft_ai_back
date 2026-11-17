@@ -1,0 +1,4 @@
+[2026-11-11 18:32:20] local.INFO: order.created {"order_id":6,"user_id":2,"build_id":1,"total":6056000}
+[2026-11-11 18:32:20] local.INFO: api.request {"request_id":"3ee34602-665f-4858-bebd-513bf375cd8d","method":"POST","url":"/api/v1/orders","user_id":2,"status":201,"duration_ms":88.97}
+[2026-11-11 18:34:09] local.WARNING: api.request {"request_id":"b49edcc4-0328-4622-990d-00c80578184c","method":"POST","url":"/api/v1/orders","user_id":2,"status":409,"duration_ms":62.84}
+[2026-11-11 18:36:45] local.INFO: order.status_changed {"order_id":6,"from":"new","to":"cancelled","stock_restored":true}
