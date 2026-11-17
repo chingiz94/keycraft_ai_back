@@ -14,7 +14,8 @@ if (-not (Get-NetTCPConnection -State Listen -LocalPort 8120 -ErrorAction Silent
  Start-Process -FilePath $PhpPath -WorkingDirectory $projectDirectory -ArgumentList @('artisan','serve','--host=127.0.0.1','--port=8120','--no-reload') -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logDirectory 'server.out.log') -RedirectStandardError (Join-Path $logDirectory 'server.err.log') | Out-Null
 }
 if (-not (Get-NetTCPConnection -State Listen -LocalPort 5173 -ErrorAction SilentlyContinue)) {
- $arguments=@('"'+$nextScript+'"',$(if($Development){'dev'}else{'start'}),'--hostname','localhost','--port','5173')
+ $quotedNextScript='"{0}"' -f $nextScript
+ $arguments=@($quotedNextScript,$(if($Development){'dev'}else{'start'}),'--hostname','localhost','--port','5173')
  if ($Development) { $arguments+='--webpack' }
  Start-Process -FilePath $nodeCommand.Source -WorkingDirectory $frontendDirectory -ArgumentList $arguments -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logDirectory 'frontend.out.log') -RedirectStandardError (Join-Path $logDirectory 'frontend.err.log') | Out-Null
 }

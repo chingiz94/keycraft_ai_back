@@ -24,7 +24,7 @@ class RetailCatalogController extends Controller
         $catalog = $this->catalog->catalog();
         $products = collect($catalog['products'])
             ->when($input['category'] ?? null, fn ($items, $category) => $items->where('category', $category))
-            ->when($input['search'] ?? null, fn ($items, $search) => $items->filter(fn ($product) => str_contains(mb_strtolower($product['name'].' '.$product['description']), mb_strtolower($search))))
+            ->when($input['search'] ?? null, fn ($items, $search) => $items->filter(fn ($product) => str_contains(mb_strtolower($product['name'].' '.$product['brand'].' '.$product['description']), mb_strtolower($search))))
             ->when($request->boolean('in_stock'), fn ($items) => $items->filter(fn ($product) => $product['best_offer']['availability'] === 'in_stock'));
 
         return response()->json(['data' => $products->values(), 'meta' => ['checked_at' => $catalog['checked_at'], 'notice' => $catalog['notice']]]);

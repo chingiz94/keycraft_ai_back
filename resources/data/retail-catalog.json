@@ -1,10 +1,16 @@
 {
-  "version": 1,
-  "checked_at": "2026-11-17T19:29:29.055504+00:00",
+  "version": 2,
+  "checked_at": "2026-11-17T21:31:58.038980+00:00",
   "notice": "Цены и наличие зафиксированы при проверке. Окончательную стоимость, наличие в городе и доставку подтверждает магазин. Покупка оформляется на сайте продавца.",
   "compatibility_sources": [
     "https://www.gloriousgaming.com/pages/guide-gmmkpro",
-    "https://www.gloriousgaming.com/en-eu/blogs/guides-resources/5-useful-tips-trick-to-improve-your-gmmk-pro-experience"
+    "https://www.gloriousgaming.com/en-eu/blogs/guides-resources/5-useful-tips-trick-to-improve-your-gmmk-pro-experience",
+    "https://www.gloriousgaming.com/en-eu/pages/guide-gmmk2-65",
+    "https://www.gloriousgaming.com/pages/guide-gmmk2-96",
+    "https://glorious.ladesk.com/220907-GMMK-2--GMMK-PRO---Keycap-and-Switch-Compatibility",
+    "https://row.hyperx.com/products/hyperx-linear-switches",
+    "https://row.hyperx.com/products/hyperx-tactile-switches",
+    "https://www.gloriousgaming.com/products/glorious-mechanical-switches-lynx"
   ],
   "products": [
     {
@@ -31,8 +37,31 @@
           "availability": "in_stock",
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://over-shop.kz/upload/iblock/dac/atgym1b3wens2pd23bw5m62rbb15b4zr.jpg"
+        },
+        {
+          "id": "gmmk-pro-vendara",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/osnova-klaviatury-glorious-gmmk-pro-barebones-cernaia",
+          "price": 7711300,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/50776/images/big/4.webp"
+        },
+        {
+          "id": "gmmk-pro-shop",
+          "merchant": "Белый Ветер",
+          "url": "https://shop.kz/offer/baza-dlya-klaviatury-glorious-gmmk-pro-barebones-black-slate-usb/",
+          "price": 9999000,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://shop.kz/upload/iblock/65e/0vtplin3zvno50jxnaqnxvzj2x5k3jo5/175523_GMMK-Pro-Barebones_01_1.webp"
         }
-      ]
+      ],
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": ""
     },
     {
       "id": "gpbt-black-ash",
@@ -59,7 +88,14 @@
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://shop.kz/upload/iblock/6f7/cikvcs02binxzz82dnpwnri97msz373c/175638A1.webp"
         }
-      ]
+      ],
+      "compatible_formats": [
+        "65",
+        "75",
+        "96"
+      ],
+      "keycap_profile": "Cherry",
+      "compatibility_note": "Покрытие ANSI раскладок GMMK PRO и GMMK 2 подтверждено для GPBT."
     },
     {
       "id": "gateron-red",
@@ -96,7 +132,10 @@
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://avalon.mpkz.net/storage/avalon/50764/images/big/1.webp"
         }
-      ]
+      ],
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": ""
     },
     {
       "id": "gateron-brown",
@@ -123,7 +162,10 @@
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://shop.kz/upload/iblock/f0a/q77hiztafpu6841jl3614esngfti7aam/175516_Glorious-Gateron_01_1.webp"
         }
-      ]
+      ],
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": ""
     },
     {
       "id": "gateron-black",
@@ -150,7 +192,10 @@
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://avalon.mpkz.net/storage/avalon/50767/images/big/1.webp"
         }
-      ]
+      ],
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": ""
     },
     {
       "id": "gateron-blue",
@@ -176,8 +221,21 @@
           "availability": "in_stock",
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://avalon.mpkz.net/storage/avalon/50766/images/big/1.webp"
+        },
+        {
+          "id": "gateron-blue-shop",
+          "merchant": "Белый Ветер",
+          "url": "https://shop.kz/offer/pereklyuchatel-klaviatury-glorious-gateron-blue/",
+          "price": 1299000,
+          "currency": "KZT",
+          "availability": "out_of_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://shop.kz/upload/iblock/12f/k04419064no6iopx1fj5yqrj6298v43n/175515_Glorious-Gateron_01_1.webp"
         }
-      ]
+      ],
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": ""
     },
     {
       "id": "lynx-36",
@@ -204,7 +262,10 @@
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://avalon.mpkz.net/storage/avalon/50763/images/big/1.webp"
         }
-      ]
+      ],
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": ""
     },
     {
       "id": "gpbt-grapefruit",
@@ -230,6 +291,407 @@
           "availability": "in_stock",
           "checked_at": "2026-11-17T19:29:29.055504+00:00",
           "source_image": "https://avalon.mpkz.net/storage/avalon/50771/images/big/2.webp"
+        }
+      ],
+      "compatible_formats": [
+        "65",
+        "75",
+        "96"
+      ],
+      "keycap_profile": "Cherry",
+      "compatibility_note": "Покрытие ANSI раскладок GMMK PRO и GMMK 2 подтверждено для GPBT."
+    },
+    {
+      "id": "gmmk2-65-black",
+      "name": "GMMK 2 65% Black",
+      "brand": "Glorious",
+      "category": "kit",
+      "description": "Barebones ANSI 65% на 67 клавиш: корпус, hot-swap плата, плейт и стабилизаторы. Свитчи и кейкапы приобретаются отдельно.",
+      "image": "assets/products/gmmk2-65-black.webp",
+      "pack_quantity": 1,
+      "format": "65",
+      "key_count": 67,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "black",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Механические MX 3/5 pin, не low-profile и не магнитные HE.",
+      "offers": [
+        {
+          "id": "gmmk2-65-black",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/osnova-klaviatury-glorious-gmmk2-compact-65-rgb-cernaia",
+          "price": 3836300,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/50772/images/big/1.webp"
+        },
+        {
+          "id": "gmmk2-65-black-shop",
+          "merchant": "Белый Ветер",
+          "url": "https://shop.kz/offer/baza-dlya-klaviatury-glorious-gmmk2-compact-black-usb/",
+          "price": 3999000,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://shop.kz/upload/iblock/03a/x8v5g6nwh8v0l3edxyuko1l680tbeere/175505_GMMK2-Compact_01_1.webp"
+        }
+      ]
+    },
+    {
+      "id": "gmmk2-65-white",
+      "name": "GMMK 2 65% White",
+      "brand": "Glorious",
+      "category": "kit",
+      "description": "Barebones ANSI 65% на 67 клавиш: корпус, hot-swap плата, плейт и стабилизаторы. Свитчи и кейкапы приобретаются отдельно.",
+      "image": "assets/products/gmmk2-65-white.webp",
+      "pack_quantity": 1,
+      "format": "65",
+      "key_count": 67,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "white",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Механические MX 3/5 pin, не low-profile и не магнитные HE.",
+      "offers": [
+        {
+          "id": "gmmk2-65-white",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/osnova-klaviatury-glorious-gmmk2-compact-65-rgb-belaia",
+          "price": 3836300,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/50773/images/big/1.webp"
+        },
+        {
+          "id": "gmmk2-65-white-shop",
+          "merchant": "Белый Ветер",
+          "url": "https://shop.kz/offer/baza-dlya-klaviatury-glorious-gmmk2-compact-white-usb/",
+          "price": 3999000,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://shop.kz/upload/iblock/516/l0os32bi6s3rz71i1ndl0j11oh7b0don/175506_GMMK2-Compact_01_1.webp"
+        }
+      ]
+    },
+    {
+      "id": "gmmk2-96-black",
+      "name": "GMMK 2 96% Black",
+      "brand": "Glorious",
+      "category": "kit",
+      "description": "Barebones ANSI 96% на 99 клавиш: корпус, hot-swap плата, плейт и стабилизаторы. Свитчи и кейкапы приобретаются отдельно.",
+      "image": "assets/products/gmmk2-96-black.webp",
+      "pack_quantity": 1,
+      "format": "96",
+      "key_count": 99,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "black",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Механические MX 3/5 pin, не low-profile и не магнитные HE.",
+      "offers": [
+        {
+          "id": "gmmk2-96-black",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/osnova-klaviatury-glorious-gmmk2-full-size-96-rgb-cernaia",
+          "price": 3973800,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/50774/images/big/1.webp"
+        },
+        {
+          "id": "gmmk2-96-black-shop",
+          "merchant": "Белый Ветер",
+          "url": "https://shop.kz/offer/baza-dlya-klaviatury-glorious-gmmk2-full-size-black-usb/",
+          "price": 4499000,
+          "currency": "KZT",
+          "availability": "out_of_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://shop.kz/upload/iblock/860/g27wbz2zd5up89sozmh9iazm11p4goad/175522_GMMK2-Full-Size_01_1.webp"
+        }
+      ]
+    },
+    {
+      "id": "gmmk2-96-white",
+      "name": "GMMK 2 96% White",
+      "brand": "Glorious",
+      "category": "kit",
+      "description": "Barebones ANSI 96% на 99 клавиш: корпус, hot-swap плата, плейт и стабилизаторы. Свитчи и кейкапы приобретаются отдельно.",
+      "image": "assets/products/gmmk2-96-white.webp",
+      "pack_quantity": 1,
+      "format": "96",
+      "key_count": 99,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "white",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Механические MX 3/5 pin, не low-profile и не магнитные HE.",
+      "offers": [
+        {
+          "id": "gmmk2-96-white",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/osnova-klaviatury-glorious-gmmk2-full-size-belaia",
+          "price": 3973800,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/50775/images/big/1.webp"
+        }
+      ]
+    },
+    {
+      "id": "lynx-unlubed-36",
+      "name": "Lynx Unlubed",
+      "brand": "Glorious",
+      "category": "switch",
+      "description": "Линейные MX свитчи без заводской смазки. В упаковке 36 штук; количество упаковок зависит от выбранной основы.",
+      "image": "assets/products/lynx-unlubed-36.webp",
+      "pack_quantity": 36,
+      "format": null,
+      "key_count": null,
+      "layout": null,
+      "switch_type": "mx",
+      "sound": "linear",
+      "color": "neutral",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Стандартные механические MX, не HE и не low-profile.",
+      "offers": [
+        {
+          "id": "lynx-unlubed-36",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/perekliucatel-glorious-mechanical-switches-lynx-glo-swt-lynx",
+          "price": 1098800,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/421329/images/big/1.webp"
+        }
+      ]
+    },
+    {
+      "id": "hyperx-red-45",
+      "name": "HyperX Linear Red",
+      "brand": "HyperX",
+      "category": "switch",
+      "description": "Линейные механические 5-pin MX свитчи. В упаковке 45 штук; количество упаковок зависит от выбранной основы.",
+      "image": "assets/products/hyperx-red-45.webp",
+      "pack_quantity": 45,
+      "format": null,
+      "key_count": null,
+      "layout": null,
+      "switch_type": "mx",
+      "sound": "linear",
+      "color": "neutral",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Стандартные механические MX, не HE и не low-profile.",
+      "offers": [
+        {
+          "id": "hyperx-red-45",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/lineinye-perekliucateli-hyperx-85u07aa-krasnyi",
+          "price": 518200,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/52183/images/big/1.webp"
+        }
+      ]
+    },
+    {
+      "id": "hyperx-aqua-45",
+      "name": "HyperX Tactile Aqua",
+      "brand": "HyperX",
+      "category": "switch",
+      "description": "Тактильные механические 5-pin MX свитчи. В упаковке 45 штук; количество упаковок зависит от выбранной основы.",
+      "image": "assets/products/hyperx-aqua-45.webp",
+      "pack_quantity": 45,
+      "format": null,
+      "key_count": null,
+      "layout": null,
+      "switch_type": "mx",
+      "sound": "tactile",
+      "color": "neutral",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Стандартные механические MX, не HE и не low-profile.",
+      "offers": [
+        {
+          "id": "hyperx-aqua-45",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/taktilnye-perekliucateli-hyperx-85u08aa-akva",
+          "price": 518200,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/52184/images/big/1.webp"
+        }
+      ]
+    },
+    {
+      "id": "gpbt-rainforest",
+      "name": "GPBT Rain Forest",
+      "brand": "Glorious",
+      "category": "keycap",
+      "description": "Набор GPBT с дополнительными клавишами для ANSI GMMK PRO и GMMK 2.",
+      "image": "assets/products/gpbt-rainforest.webp",
+      "pack_quantity": 1,
+      "format": null,
+      "key_count": null,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "green",
+      "compatible_formats": [
+        "65",
+        "75",
+        "96"
+      ],
+      "keycap_profile": "Cherry",
+      "compatibility_note": "Набор GPBT с дополнительными клавишами для ANSI GMMK PRO и GMMK 2.",
+      "offers": [
+        {
+          "id": "gpbt-rainforest",
+          "merchant": "Белый Ветер",
+          "url": "https://shop.kz/offer/nabor-kolpachkov-na-klaviaturu-glorious-gpbt-keycaps-rain-forest-dark-green-green/",
+          "price": 2999000,
+          "currency": "KZT",
+          "availability": "out_of_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://shop.kz/upload/iblock/7e1/8xltblqb1uke1zrq0qxg3sba3m4782q4/175639a1.webp"
+        }
+      ]
+    },
+    {
+      "id": "aura-v2-white",
+      "name": "Aura V2 White",
+      "brand": "Glorious",
+      "category": "keycap",
+      "description": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "image": "assets/products/aura-v2-white.webp",
+      "pack_quantity": 1,
+      "format": null,
+      "key_count": null,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "white",
+      "compatible_formats": [],
+      "keycap_profile": null,
+      "compatibility_note": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "offers": [
+        {
+          "id": "aura-v2-white",
+          "merchant": "Белый Ветер",
+          "url": "https://shop.kz/offer/nabor-kolpachkov-na-klaviaturu-glorious-aura-keycaps-v2-white/",
+          "price": 2199000,
+          "currency": "KZT",
+          "availability": "out_of_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://shop.kz/upload/iblock/17d/lu3pc7xdxo9dew3ul6tiwfb2jla40pcw/175637a1.webp"
+        }
+      ]
+    },
+    {
+      "id": "razer-quartz",
+      "name": "Razer PBT Quartz Pink",
+      "brand": "Razer",
+      "category": "keycap",
+      "description": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "image": "assets/products/razer-quartz.webp",
+      "pack_quantity": 1,
+      "format": null,
+      "key_count": null,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "pink",
+      "compatible_formats": [],
+      "keycap_profile": "OEM",
+      "compatibility_note": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "offers": [
+        {
+          "id": "razer-quartz",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/keikapy-razer-pbt-keycap-quartz-pink",
+          "price": 1209500,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/51176/images/big/1.webp"
+        }
+      ]
+    },
+    {
+      "id": "razer-mercury",
+      "name": "Razer PBT Mercury White",
+      "brand": "Razer",
+      "category": "keycap",
+      "description": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "image": "assets/products/razer-mercury.webp",
+      "pack_quantity": 1,
+      "format": null,
+      "key_count": null,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "white",
+      "compatible_formats": [],
+      "keycap_profile": "OEM",
+      "compatibility_note": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "offers": [
+        {
+          "id": "razer-mercury",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/nabor-klavis-razer-pbt-keycap-mercury-white-belyi",
+          "price": 1149200,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/50785/images/big/1.webp"
+        }
+      ]
+    },
+    {
+      "id": "hyperx-pbt-white",
+      "name": "HyperX PBT Full Set White",
+      "brand": "HyperX",
+      "category": "keycap",
+      "description": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "image": "assets/products/hyperx-pbt-white.webp",
+      "pack_quantity": 1,
+      "format": null,
+      "key_count": null,
+      "layout": "ansi",
+      "switch_type": "mx",
+      "sound": null,
+      "color": "white",
+      "compatible_formats": [],
+      "keycap_profile": "OEM",
+      "compatibility_note": "Покрытие нестандартных клавиш GMMK не подтверждено: перед покупкой сверяйте длину Shift и нижний ряд. Этот набор не получает автоматическое подтверждение совместимости.",
+      "offers": [
+        {
+          "id": "hyperx-pbt-white",
+          "merchant": "Vendara",
+          "url": "https://vendara.kz/product/nabor-keikapov-hyperx-pbt-keycaps-full-key-set-belyi",
+          "price": 1075000,
+          "currency": "KZT",
+          "availability": "in_stock",
+          "checked_at": "2026-11-17T21:31:58.038980+00:00",
+          "source_image": "https://avalon.mpkz.net/storage/avalon/51172/images/big/1.webp"
         }
       ]
     }

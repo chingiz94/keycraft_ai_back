@@ -21,7 +21,7 @@ class RetailPlanTest extends TestCase
 
     public function test_real_catalog_has_direct_https_product_links_and_correct_stock_filter(): void
     {
-        $products = $this->getJson('/api/v1/retail/products')->assertOk()->assertJsonCount(8, 'data')->json('data');
+        $products = $this->getJson('/api/v1/retail/products')->assertOk()->assertJsonCount(20, 'data')->json('data');
         foreach ($products as $product) {
             foreach ($product['offers'] as $offer) {
                 $this->assertStringStartsWith('https://', $offer['url']);
@@ -29,7 +29,7 @@ class RetailPlanTest extends TestCase
                 $this->assertGreaterThan(0, $offer['price']);
             }
         }
-        $this->getJson('/api/v1/retail/products?category=switch&in_stock=1')->assertOk()->assertJsonCount(4, 'data');
+        $this->getJson('/api/v1/retail/products?category=switch&in_stock=1')->assertOk()->assertJsonCount(7, 'data');
         $this->getJson('/api/v1/retail/products?category=other')->assertUnprocessable();
     }
 
@@ -96,6 +96,27 @@ class RetailPlanTest extends TestCase
         $clean = Build::factory()->for($owner)->create();
         $this->putJson('/api/v1/builds/'.$clean->id.'/shopping-plan', $this->selection())->assertOk();
         $this->postJson('/api/v1/builds/'.$clean->id.'/items', ['component_id' => $component->id, 'quantity' => 1])->assertConflict();
+    }
+
+    public function test_compact_and_full_size_bases_use_their_actual_key_counts_and_hyperx_pack_size(): void
+    {
+        foreach (['gmmk2-65-black' => [67, 2, 23], 'gmmk2-96-white' => [99, 3, 36]] as $kit => [$count, $packs, $spare]) {
+            $quote = $this->postJson('/api/v1/retail/quote', ['kit_id' => $kit, 'switch_id' => 'hyperx-red-45', 'keycap_id' => 'gpbt-black-ash'])
+                ->assertOk()->assertJsonPath('data.compatible', true)->assertJsonPath('data.key_count', $count)->json('data');
+            $row = collect($quote['items'])->firstWhere('product.category', 'switch');
+            $this->assertSame($packs, $row['packs']);
+            $this->assertSame($spare, $row['spare']);
+            $this->assertSame($packs * 518200, $row['subtotal']);
+        }
+    }
+
+    public function test_unverified_keycap_coverage_is_never_reported_as_compatible(): void
+    {
+        $selection = $this->selection();
+        $selection['keycap_id'] = 'razer-quartz';
+        $this->postJson('/api/v1/retail/quote', $selection)->assertOk()
+            ->assertJsonPath('data.complete', true)->assertJsonPath('data.compatible', false)
+            ->assertJsonCount(1, 'data.issues');
     }
 
     public function test_old_stock_snapshot_remains_explicitly_marked_as_stale(): void

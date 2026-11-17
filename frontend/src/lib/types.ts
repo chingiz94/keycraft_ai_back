@@ -1,6 +1,6 @@
 export type User = { id:number;name:string;email:string;role:'buyer'|'admin' };
 export type Offer = {id:string;merchant:string;url:string;price:number;currency:'KZT';availability:'in_stock'|'out_of_stock';checked_at:string;source_image?:string};
-export type Product = {id:string;name:string;brand:string;category:'kit'|'switch'|'keycap';description:string;image:string;pack_quantity:number;format:string|null;key_count:number|null;layout:string|null;sound:string|null;stale:boolean;offers:Offer[];best_offer:Offer};
+export type Product = {id:string;name:string;brand:string;category:'kit'|'switch'|'keycap';description:string;image:string;pack_quantity:number;format:string|null;key_count:number|null;layout:string|null;sound:string|null;stale:boolean;compatible_formats:string[];keycap_profile:string|null;compatibility_note:string;offers:Offer[];best_offer:Offer};
 export type Selection = {kit_id:string|null;switch_id:string|null;keycap_id:string|null};
 export type Draft = Selection & {name:string;budget:number;buildId?:number;ownerId?:number};
 export type ShoppingRow = {product:Product;quantity:number;packs:number;spare:number;offer:Offer;subtotal:number};

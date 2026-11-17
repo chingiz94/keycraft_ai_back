@@ -6335,7 +6335,7 @@
         ],
         "summary": "Реальные комплектующие и предложения магазинов",
         "operationId": "get_retail_products",
-        "description": "Проверенный вручную снимок восьми моделей. Цены в тиынах, наличие на checked_at. stale=true через семь дней. Заказ и оплата на стороне продавца.",
+        "description": "Проверенный вручную снимок двадцати моделей. Цены в тиынах, наличие на checked_at. stale=true через семь дней. Заказ и оплата на стороне продавца.",
         "security": [],
         "responses": {
           "200": {
@@ -8704,6 +8704,19 @@
             "type": "string",
             "nullable": true
           },
+          "compatible_formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keycap_profile": {
+            "type": "string",
+            "nullable": true
+          },
+          "compatibility_note": {
+            "type": "string"
+          },
           "stale": {
             "type": "boolean"
           },
@@ -8729,6 +8742,9 @@
           "key_count",
           "layout",
           "sound",
+          "compatible_formats",
+          "keycap_profile",
+          "compatibility_note",
           "stale",
           "offers",
           "best_offer"

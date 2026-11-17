@@ -39,7 +39,8 @@ class RetailRecommendationTest extends TestCase
 
             return $request->url() === 'https://api.groq.com/openai/v1/responses'
                 && ! isset($request['store']) && ! isset($payload['user_id']) && ! isset($payload['email'])
-                && count($payload['catalog']) === 7
+                && count($payload['catalog']) === 14
+                && ! in_array('razer-quartz', array_column($payload['catalog'], 'id'), true)
                 && $payload['currency'] === 'KZT' && $payload['budget_kzt'] === 200000
                 && $payload['catalog'][0]['price_kzt'] === 70845
                 && ! isset($payload['catalog'][0]['price']);

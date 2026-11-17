@@ -26,6 +26,7 @@ class RetailRecommendationService
         }
         $products = collect($this->catalog->catalog()['products'])
             ->filter(fn (array $product): bool => $product['best_offer']['availability'] === 'in_stock')
+            ->filter(fn (array $product): bool => $product['category'] !== 'keycap' || ! empty($product['compatible_formats']))
             ->map(fn (array $product): array => array_intersect_key($product, array_flip(['id', 'name', 'category', 'pack_quantity', 'key_count', 'layout', 'switch_type', 'sound', 'best_offer'])))
             ->map(function (array $product): array {
                 $product['price_kzt'] = $product['best_offer']['price'] / 100;

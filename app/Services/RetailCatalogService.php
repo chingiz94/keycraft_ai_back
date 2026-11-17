@@ -62,6 +62,9 @@ class RetailCatalogService
         if (isset($chosen['kit'], $chosen['keycap']) && $chosen['kit']['layout'] !== $chosen['keycap']['layout']) {
             $issues[] = 'Раскладка кейкапов не подходит к основе.';
         }
+        if (isset($chosen['kit'], $chosen['keycap']) && ! in_array($chosen['kit']['format'], $chosen['keycap']['compatible_formats'] ?? [], true)) {
+            $issues[] = 'Покрытие нестандартных клавиш этой основы набором кейкапов не подтверждено. Проверьте длину Shift и нижний ряд или выберите GPBT.';
+        }
         $complete = count($chosen) === 3;
 
         return ['selection' => array_intersect_key($selection, array_flip(['kit_id', 'switch_id', 'keycap_id'])), 'items' => $rows, 'total' => $total, 'currency' => 'KZT', 'complete' => $complete, 'compatible' => $complete && $issues === [], 'issues' => $issues, 'warnings' => $warnings, 'key_count' => $keyCount, 'checked_at' => $catalog['checked_at'], 'notice' => $catalog['notice'], 'compatibility_sources' => $catalog['compatibility_sources']];
