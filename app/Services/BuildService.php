@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 class BuildService
 {
-    public function list(User $user, int $perPage)
+    public function list(User $user, int $perPage, bool $retailOnly = false)
     {
-        return $user->builds()->with('items.component')->latest('id')->paginate($perPage)->withQueryString();
+        return $user->builds()->when($retailOnly, fn ($query) => $query->whereNotNull('shopping_plan'))->with('items.component')->latest('id')->paginate($perPage)->withQueryString();
     }
 
     public function save(User $user, ?Build $build, array $data): Build
@@ -40,6 +40,9 @@ class BuildService
     {
         return DB::transaction(function () use ($build, $item, $data) {
             $build = Build::whereKey($build->id)->lockForUpdate()->firstOrFail();
+            if ($build->shopping_plan !== null) {
+                throw new BusinessException('У этой сборки уже есть реальный список покупок. Учебные складские позиции добавляются в отдельную сборку.', 409);
+            }
             if ($item) {
                 $item = $build->items()->whereKey($item->id)->firstOrFail();
                 $item->update(['quantity' => $data['quantity']]);

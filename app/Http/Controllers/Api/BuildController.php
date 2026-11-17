@@ -20,7 +20,7 @@ class BuildController extends Controller
 
     public function index(PageRequest $request)
     {
-        return BuildResource::collection($this->builds->list($request->user(), $request->integer('per_page', 20)));
+        return BuildResource::collection($this->builds->list($request->user(), $request->integer('per_page', 20), $request->query('source') === 'retail'));
     }
 
     public function show(Build $build)

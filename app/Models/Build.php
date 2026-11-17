@@ -16,7 +16,7 @@ class Build extends Model
 
     protected function casts(): array
     {
-        return ['budget' => 'integer'];
+        return ['budget' => 'integer', 'shopping_plan' => 'array'];
     }
 
     public function user(): BelongsTo

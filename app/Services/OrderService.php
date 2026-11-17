@@ -41,6 +41,9 @@ class OrderService
 
             $build = Build::query()->whereKey($input['build_id'])->lockForUpdate()->firstOrFail();
             abort_unless($build->user_id === $user->id, 403, 'Нет доступа к этой сборке.');
+            if ($build->shopping_plan !== null) {
+                throw new BusinessException('Покупка выбранных товаров оформляется на сайтах магазинов из списка покупок.', 409);
+            }
             $items = $build->items()->orderBy('component_id')->lockForUpdate()->get();
             $components = Component::query()->whereIn('id', $items->pluck('component_id'))
                 ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
