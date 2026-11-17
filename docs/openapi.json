@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "KeyCraft AI Backend API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "REST API курсового проекта. Все суммы — целые тиыны KZT (100 тиын = 1 тенге). Bearer токены Sanctum действуют 1440 минут; logout отзывает только текущий токен. Роли: гость — каталог и вход; buyer — собственные сборки, ИИ и заказы; admin — каталог, предложения, все заказы, роли и статистика. Администратор не получает доступ к покупательским маршрутам сборок. Внешние покупки не создают заказ на сайте. Онлайн оплаты, доставки и автопарсинга нет. JSON UTF-8. Примеры цен/остатков учебные. Поля вложенных отношений возвращаются только при загрузке соответствующей связи."
   },
   "servers": [
@@ -1159,6 +1159,18 @@
               "example": 20
             },
             "description": "По умолчанию 20; 1–100."
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "retail"
+              ]
+            },
+            "description": "Только сохранённые списки покупок реальных товаров. Без параметра — все свои сборки."
           }
         ]
       },
@@ -3575,7 +3587,7 @@
         ],
         "summary": "Подбор настоящей языковой моделью",
         "operationId": "post_ai_recommendations",
-        "description": "Доступ: buyer. Лимит 10 запросов/минуту на пользователя. Внешний Groq или OpenAI Responses API выбирается серверной настройкой AI_PROVIDER, таймаут 30 секунд. Groq Free имеет собственные лимиты. Автоматического платного fallback нет. Ключ только на сервере. Передаются каталог, бюджет, формат и preferences; не добавляйте в preferences личные данные. Ответ модели повторно проверяется по текущим ID, количествам, совместимости, остатку и бюджету. Сборка автоматически не сохраняется, товары не резервируются. При невалидном ответе/отсутствующем ключе/сбое — 503 без имитации. Если совместимый набор не найден — 422.",
+        "description": "Доступ: buyer. Лимит 10 запросов/минуту на пользователя. Внешний Groq или OpenAI Responses API, таймаут 30 секунд. Ключ только на сервере. Передаются каталог, бюджет, формат и preferences; не добавляйте в preferences личные данные. Ответ модели повторно проверяется по текущим ID, количествам, совместимости, остатку и бюджету. Сборка автоматически не сохраняется, товары не резервируются. При невалидном ответе/отсутствующем ключе/сбое — 503 без имитации. Если совместимый набор не найден — 422.",
         "security": [
           {
             "bearerAuth": []
@@ -6315,6 +6327,599 @@
           }
         }
       }
+    },
+    "/retail/products": {
+      "get": {
+        "tags": [
+          "Retail"
+        ],
+        "summary": "Реальные комплектующие и предложения магазинов",
+        "operationId": "get_retail_products",
+        "description": "Проверенный вручную снимок восьми моделей. Цены в тиынах, наличие на checked_at. stale=true через семь дней. Заказ и оплата на стороне продавца.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Успешно.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RetailProduct"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Ошибка валидации",
+                  "errors": {
+                    "quantity": [
+                      "Поле quantity должно быть целым числом."
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Внутренняя ошибка сервера",
+                  "errors": {}
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "kit",
+                "switch",
+                "keycap"
+              ]
+            },
+            "description": "Категория"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "description": "Поиск"
+          },
+          {
+            "name": "in_stock",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Есть доступное предложение"
+          }
+        ]
+      }
+    },
+    "/retail/quote": {
+      "post": {
+        "tags": [
+          "Retail"
+        ],
+        "summary": "Рассчитать список покупок",
+        "operationId": "post_retail_quote",
+        "description": "Публичный расчёт по серверному каталогу. Все три поля обязательны, значение null разрешает неполный черновик. Для 82 клавиш упаковки по36 округляются вверх до3. Цена, total и user_id от клиента запрещены. Доставку подтверждает магазин.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Успешно.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ShoppingQuote"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Ошибка валидации",
+                  "errors": {
+                    "quantity": [
+                      "Поле quantity должно быть целым числом."
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Внутренняя ошибка сервера",
+                  "errors": {}
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingSelection"
+              },
+              "example": {
+                "kit_id": "gmmk-pro-black",
+                "switch_id": "gateron-red",
+                "keycap_id": "gpbt-black-ash"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/builds/{build}/shopping-plan": {
+      "get": {
+        "tags": [
+          "Retail"
+        ],
+        "summary": "Получить расчёт сохранённого списка",
+        "operationId": "get_builds_build_shopping_plan",
+        "description": "Доступ: buyer, только владелец. Текущий расчёт по shopping_plan сборки. Не создаёт заказ у продавца.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ShoppingQuote"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Требуется вход",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Доступ запрещён",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Ресурс не найден",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт бизнес-правила",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Конфликт бизнес-правила",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Внутренняя ошибка сервера",
+                  "errors": {}
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "build",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "example": 1
+            },
+            "description": "ID ресурса."
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Retail"
+        ],
+        "summary": "Сохранить выбор реальных товаров",
+        "operationId": "put_builds_build_shopping_plan",
+        "description": "Доступ: buyer, только владелец. Сохраняет ID в builds.shopping_plan, возвращает расчёт, сервер проверяет категории. Смешивание с прежними складскими items запрещено409. Такой список нельзя оформить через /orders.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ShoppingQuote"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Требуется вход",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Доступ запрещён",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ресурс не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Ресурс не найден",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт бизнес-правила",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Конфликт бизнес-правила",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Ошибка валидации",
+                  "errors": {
+                    "quantity": [
+                      "Поле quantity должно быть целым числом."
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Внутренняя ошибка сервера",
+                  "errors": {}
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "build",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "example": 1
+            },
+            "description": "ID ресурса."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingSelection"
+              },
+              "example": {
+                "kit_id": "gmmk-pro-black",
+                "switch_id": "gateron-red",
+                "keycap_id": "gpbt-black-ash"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/retail/recommendations": {
+      "post": {
+        "tags": [
+          "Retail"
+        ],
+        "summary": "ИИ подбор реальных комплектующих",
+        "operationId": "post_retail_recommendations",
+        "description": "Доступ: buyer. Сервер обращается к настроенному Groq/OpenAI и проверяет возвращённые ID, совместимость и бюджет. Ключ не передаётся браузеру. Недоступность провайдера даёт503, превышение бюджета422. Внешний платный провайдер автоматически не подставляется.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RetailRecommendation"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Требуется вход",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Доступ запрещён",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Ошибка валидации",
+                  "errors": {
+                    "quantity": [
+                      "Поле quantity должно быть целым числом."
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Слишком много запросов",
+                  "errors": {}
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Секунды до следующей попытки."
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Внутренняя ошибка сервера",
+                  "errors": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис ИИ временно недоступен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "message": "Сервис ИИ временно недоступен.",
+                  "errors": {}
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetailRecommendationRequest"
+              },
+              "example": {
+                "budget": 15000000,
+                "preferences": "Тихая клавиатура для работы"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6631,6 +7236,14 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-11-07T10:00:00+00:00"
+          },
+          "shopping_plan": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShoppingSelection"
+              }
+            ],
+            "nullable": true
           }
         },
         "required": [
@@ -7965,6 +8578,313 @@
           "data",
           "links",
           "meta"
+        ]
+      },
+      "ShoppingSelection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kit_id",
+          "switch_id",
+          "keycap_id"
+        ],
+        "properties": {
+          "kit_id": {
+            "type": "string",
+            "nullable": true,
+            "example": "gmmk-pro-black"
+          },
+          "switch_id": {
+            "type": "string",
+            "nullable": true,
+            "example": "gateron-red"
+          },
+          "keycap_id": {
+            "type": "string",
+            "nullable": true,
+            "example": "gpbt-black-ash"
+          }
+        }
+      },
+      "RetailOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "merchant": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "price": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 100000000,
+            "example": 1800000,
+            "description": "Целое число тиынов KZT; 100 тиын = 1 тенге. Не float и не сумма в тенге."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "KZT"
+            ]
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "in_stock",
+              "out_of_stock"
+            ]
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-07T10:00:00+00:00"
+          }
+        },
+        "required": [
+          "id",
+          "merchant",
+          "url",
+          "price",
+          "currency",
+          "availability",
+          "checked_at"
+        ]
+      },
+      "RetailProduct": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "kit",
+              "switch",
+              "keycap"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "pack_quantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "key_count": {
+            "type": "integer",
+            "nullable": true
+          },
+          "layout": {
+            "type": "string",
+            "nullable": true
+          },
+          "sound": {
+            "type": "string",
+            "nullable": true
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetailOffer"
+            }
+          },
+          "best_offer": {
+            "$ref": "#/components/schemas/RetailOffer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "brand",
+          "category",
+          "description",
+          "image",
+          "pack_quantity",
+          "format",
+          "key_count",
+          "layout",
+          "sound",
+          "stale",
+          "offers",
+          "best_offer"
+        ]
+      },
+      "ShoppingQuote": {
+        "type": "object",
+        "properties": {
+          "selection": {
+            "$ref": "#/components/schemas/ShoppingSelection"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product": {
+                  "$ref": "#/components/schemas/RetailProduct"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "packs": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "spare": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "offer": {
+                  "$ref": "#/components/schemas/RetailOffer"
+                },
+                "subtotal": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 1,
+                  "maximum": 100000000,
+                  "example": 1800000,
+                  "description": "Целое число тиынов KZT; 100 тиын = 1 тенге. Не float и не сумма в тенге."
+                }
+              },
+              "required": [
+                "product",
+                "quantity",
+                "packs",
+                "spare",
+                "offer",
+                "subtotal"
+              ]
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 100000000,
+            "example": 1800000,
+            "description": "Целое число тиынов KZT; 100 тиын = 1 тенге. Не float и не сумма в тенге."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "KZT"
+            ]
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "compatible": {
+            "type": "boolean"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "key_count": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-07T10:00:00+00:00"
+          },
+          "notice": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "selection",
+          "items",
+          "total",
+          "currency",
+          "complete",
+          "compatible",
+          "issues",
+          "warnings",
+          "key_count",
+          "checked_at",
+          "notice"
+        ]
+      },
+      "RetailRecommendationRequest": {
+        "type": "object",
+        "properties": {
+          "budget": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 100000000,
+            "example": 15000000,
+            "description": "Целое число тиынов KZT; 100 тиын = 1 тенге. Не float и не сумма в тенге."
+          },
+          "preferences": {
+            "type": "string",
+            "maxLength": 1000,
+            "example": "Тихая клавиатура для работы",
+            "nullable": true
+          }
+        },
+        "required": [
+          "budget"
+        ],
+        "additionalProperties": false
+      },
+      "RetailRecommendation": {
+        "type": "object",
+        "properties": {
+          "selection": {
+            "$ref": "#/components/schemas/ShoppingSelection"
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/ShoppingQuote"
+          }
+        },
+        "required": [
+          "selection",
+          "explanation",
+          "quote"
         ]
       }
     }

@@ -71,6 +71,7 @@ CREATE TABLE `builds` (
   `user_id` bigint unsigned NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `budget` bigint unsigned NOT NULL,
+  `shopping_plan` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),

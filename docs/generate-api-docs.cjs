@@ -1,0 +1,190 @@
+const fs = require('fs');
+const path = require('path');
+const out = __dirname;
+fs.mkdirSync(out, { recursive: true });
+const ref = name => ({$ref:'#/components/schemas/'+name});
+const int = (example, minimum = 1, maximum) => ({type:'integer',format:'int64',minimum,...(maximum ? {maximum} : {}),...(example !== undefined ? {example} : {})});
+const str = (example, maxLength) => ({type:'string',...(maxLength ? {maxLength} : {}),...(example !== undefined ? {example} : {})});
+const arr = items => ({type:'array',items});
+const obj = (properties, required=Object.keys(properties)) => ({type:'object',properties,required});
+const money = (example=1800000,max=100000000) => ({...int(example,1,max),description:'Целое число тиынов KZT; 100 тиын = 1 тенге. Не float и не сумма в тенге.'});
+const timestamp = {type:'string',format:'date-time',example:'2026-11-07T10:00:00+00:00'};
+const types = ['case','pcb','plate','stabilizer','switch','keycap'];
+const statuses = ['new','confirmed','assembled','issued','cancelled'];
+const componentExample = {id:1,name:'KeyCraft 65 Gasket Case',type:'case',format:'65',price:1800000,stock:20,specs:{mount:'gasket'}};
+const itemExample = {id:1,component_id:1,quantity:1,component:componentExample};
+const userExample = {id:2,name:'Покупатель',email:'buyer@keycraft.test',role:'buyer'};
+const offerExample = {id:1,component_id:1,marketplace:'AliExpress (поиск)',url:'https://www.aliexpress.com/w/wholesale-mechanical-keyboard-case.html',price:1800000,price_updated_at:'2026-11-07T10:00:00+00:00'};
+const demoComponents = [componentExample,
+ {id:2,name:'KeyCraft 65 Hot-swap PCB',type:'pcb',format:'65',price:1400000,stock:20,specs:{mount:'gasket',switch_type:'mx',layout:'ansi',key_count:67,stabilizers:{'2u':3,'6.25u':1}}},
+ {id:3,name:'KeyCraft 65 Polycarbonate Plate',type:'plate',format:'65',price:450000,stock:20,specs:{mount:'gasket',switch_type:'mx'}},
+ {id:4,name:'KeyCraft 65 Stabilizer Kit',type:'stabilizer',format:'65',price:300000,stock:20,specs:{stabilizers:{'2u':3,'6.25u':1}}},
+ {id:5,name:'KeyCraft 65 Linear MX Switch',type:'switch',format:'65',price:18000,stock:1000,specs:{switch_type:'mx',stem:'mx'}},
+ {id:6,name:'KeyCraft 65 PBT ANSI Keycaps',type:'keycap',format:'65',price:900000,stock:20,specs:{stem:'mx',layout:'ansi',key_count:67}}];
+const buildExample = {id:1,user_id:2,name:'Моя клавиатура 65%',budget:10000000,items:demoComponents.map((component,i)=>({id:i+1,component_id:i+1,quantity:component.type==='switch'?67:1,component})),created_at:'2026-11-07T10:00:00+00:00'};
+const checkExample = {compatible:true,complete:true,issues:[],unverified:[],total:6056000};
+const orderExample = {id:1,user_id:2,build_id:1,status:'new',total:6056000,created_at:'2026-11-07T10:00:00+00:00',items:buildExample.items.map(item=>({...item,unit_price:item.component.price}))};
+const schemas = {
+ Error: {type:'object',required:['message','errors'],properties:{message:str('Ошибка валидации'),errors:{description:'Ошибки по полям; пустые ошибки могут быть {} или []. Для current_total возможен массив целых чисел.',oneOf:[{type:'object',additionalProperties:{type:'array',items:{oneOf:[{type:'string'},{type:'integer'}]}}},{type:'array',maxItems:0,items:{type:'string'}}]}}},
+ User: obj({id:int(2),name:str('Покупатель'),email:{type:'string',format:'email',example:'buyer@keycraft.test'},role:{type:'string',enum:['buyer','admin'],example:'buyer'}}),
+ Specs: {type:'object',additionalProperties:false,description:'Проверяемые характеристики. Неполные specs разрешают хранение чернового каталога, но блокируют оформление как unverified. Требования каждого типа описаны в docs/database.md.',properties:{mount:str('gasket',40),switch_type:str('mx',40),stem:str('mx',40),layout:str('ansi',40),key_count:int(67,1,150),stabilizers:{type:'object',additionalProperties:int(undefined,0,100),example:{'2u':3,'6.25u':1}}}},
+ Component: obj({id:int(1),name:str('KeyCraft 65 Gasket Case'),type:{type:'string',enum:types},format:{...str('65',20),nullable:true},price:money(),stock:int(20,0,1000000),specs:ref('Specs'),offers:arr(ref('Offer'))},['id','name','type','format','price','stock','specs']),
+ Offer: obj({id:int(1),component_id:int(1),marketplace:str('AliExpress (поиск)'),url:{type:'string',format:'uri',pattern:'^https://',example:offerExample.url},price:money(),price_updated_at:timestamp}),
+ BuildItem: obj({id:int(1),component_id:int(1),quantity:int(1,1,1000),component:ref('Component')},['id','component_id','quantity']),
+ Build: obj({id:int(1),user_id:int(2),name:str('Моя клавиатура 65%'),budget:money(10000000),items:arr(ref('BuildItem')),created_at:timestamp},['id','user_id','name','budget','created_at']),
+ OrderItem: obj({id:int(1),component_id:int(1),quantity:int(1,1,1000),unit_price:{...money(),description:'Цена за единицу в тиынах KZT, зафиксированная в момент оформления.'},component:ref('Component')}),
+ Order: obj({id:int(1),user_id:int(2),build_id:{...int(1),nullable:true},status:{type:'string',enum:statuses},total:money(6056000,100000000000),created_at:timestamp,items:arr(ref('OrderItem'))},['id','user_id','build_id','status','total','created_at']),
+ Compatibility: obj({compatible:{type:'boolean',example:true},complete:{type:'boolean',example:true},issues:arr(str('Не совпадает format у компонентов: case, pcb, plate.')),unverified:arr(str('pcb: характеристика specs.mount отсутствует или некорректна.')),total:{...money(6056000,100000000000),minimum:0}}),
+ Recommendation: obj({items:arr(obj({component_id:int(1),quantity:int(1,1,1000)})),explanation:str('Детали подходят по формату, креплению и раскладке; цена укладывается в бюджет.'),total:money(6056000,100000000000),compatibility:ref('Compatibility')}),
+ AuthResponse: obj({data:ref('User'),token:str('1|token-returned-once'),token_type:{type:'string',enum:['Bearer']}}),
+ RegisterRequest: {...obj({name:str('Покупатель',100),email:{type:'string',format:'email',maxLength:254,example:'new-buyer@example.com'},password:{type:'string',format:'password',minLength:8,maxLength:72,writeOnly:true,description:'От 8 символов, не более 72 байт UTF-8; символ NUL запрещён. Для кириллицы и других многобайтовых символов лимит байт может быть достигнут раньше 72 символов.'},password_confirmation:{type:'string',format:'password',writeOnly:true,description:'Точное совпадение с password.'}}),description:'Email уникален. password_confirmation должен совпадать с password. Поле role запрещено: новая роль всегда buyer.'},
+ LoginRequest: obj({email:{type:'string',format:'email',maxLength:254},password:{type:'string',format:'password',maxLength:72,writeOnly:true,description:'Не более 72 байт UTF-8; символ NUL запрещён. Лимит байт отличается от числа Unicode символов.'}}),
+ ComponentCreate: obj({name:str('Новый корпус 65%',150),type:{type:'string',enum:types,example:'case'},price:money(),stock:int(20,0,1000000),format:{...str('65',20),nullable:true},specs:ref('Specs')},['name','type','price','stock','specs']),
+ OfferCreate: obj({component_id:int(1),marketplace:str('Магазин',100),url:{type:'string',format:'uri',pattern:'^https://',maxLength:2000,example:'https://example.com/keyboard-case'},price:money(),price_updated_at:{...timestamp,description:'Дата актуальности цены; не позднее текущего времени сервера.'}}),
+ BuildCreate: {...obj({name:str('Моя клавиатура 65%',150),budget:money(10000000)}),description:'user_id запрещён: владельцем становится текущий покупатель.'},
+ BuildItemCreate: obj({component_id:int(1),quantity:int(1,1,1000)}),
+ BuildItemUpdate: {...obj({quantity:int(1,1,1000)}),description:'component_id запрещён. Чтобы заменить компонент, удалите старую позицию и добавьте новую.'},
+ OrderCreate: obj({build_id:int(1),expected_total:money(6056000,100000000000)}),
+ StatusUpdate: {...obj({status:{type:'string',enum:statuses,example:'confirmed'}}),description:'Допустимо new → confirmed → assembled → issued; new/confirmed → cancelled. Повтор того же статуса также даёт 409.'},
+ RoleUpdate: obj({role:{type:'string',enum:['buyer','admin'],example:'buyer'}}),
+ RecommendationRequest: obj({budget:money(10000000),format:str('65',30),preferences:str('Тихая линейная клавиатура для работы',1000)},['budget','format']),
+ Statistics: obj({orders_by_status:arr(obj({status:{type:'string',enum:statuses},count:{oneOf:[{type:'integer'},{type:'string',pattern:'^\\d+$'}]},total:{oneOf:[{type:'integer'},{type:'string',pattern:'^\\d+$'}],description:'SUM(total) в тиынах; драйвер MySQL может вернуть строку.'}})),issued_revenue:{...money(6326000,100000000000),minimum:0}}),
+ Health: obj({name:str('KeyCraft AI'),time:timestamp,database:{type:'string',enum:['ok']}})
+};
+for (const [name, source] of [['ComponentUpdate','ComponentCreate'],['OfferUpdate','OfferCreate'],['BuildUpdate','BuildCreate']]) schemas[name] = {...schemas[source], required:[], description:'Частичное изменение: перечисленные поля необязательны. '+(schemas[source].description || '')};
+const envelope = name => obj({data:ref(name)});
+const paginated = name => obj({data:arr(ref(name)),links:obj({first:str('http://127.0.0.1:8120/api/v1/components?page=1'),last:str('http://127.0.0.1:8120/api/v1/components?page=1'),prev:{type:'string',nullable:true,example:null},next:{type:'string',nullable:true,example:null}}),meta:{type:'object',required:['current_page','last_page','per_page','total'],properties:{current_page:int(1),from:{...int(1),nullable:true},last_page:int(1),links:arr(obj({url:{type:'string',nullable:true},label:{type:'string'},active:{type:'boolean'}})),path:str('http://127.0.0.1:8120/api/v1/components'),per_page:int(20,1,100),to:{...int(12),nullable:true},total:int(12,0)}}});
+for (const name of ['User','Component','Offer','Build','Order']) schemas[name+'Page'] = paginated(name);
+const examples = {User:userExample,Component:componentExample,Offer:offerExample,Build:buildExample,BuildItem:itemExample,Order:orderExample,Compatibility:checkExample,Recommendation:{items:[{component_id:1,quantity:1},{component_id:2,quantity:1},{component_id:3,quantity:1},{component_id:4,quantity:1},{component_id:5,quantity:67},{component_id:6,quantity:1}],explanation:'Совместимая сборка 65% с линейными MX свитчами.',total:6056000,compatibility:checkExample},Statistics:{orders_by_status:[{status:'new',count:1,total:'6056000'}],issued_revenue:6326000}};
+const error = (code,message,errors={}) => ({description:message,content:{'application/json':{schema:ref('Error'),example:{message,errors}}}});
+const common = {'400':error(400,'Некорректный запрос'),'401':error(401,'Требуется вход'),'403':error(403,'Доступ запрещён'),'404':error(404,'Ресурс не найден'),'409':error(409,'Конфликт бизнес-правила'),'422':error(422,'Ошибка валидации',{quantity:['Поле quantity должно быть целым числом.']}),'429':{...error(429,'Слишком много запросов'),headers:{'Retry-After':{schema:{type:'integer'},description:'Секунды до следующей попытки.'}}},'500':error(500,'Внутренняя ошибка сервера'),'503':error(503,'Сервис ИИ временно недоступен.')};
+const p = (name,schema,description,where='query') => ({name,in:where,required:where==='path',schema,...(description?{description}:{})});
+const pageParams = [p('page',int(1),'Номер страницы, начиная с 1.'),p('per_page',int(20,1,100),'По умолчанию 20; 1–100.')];
+const catalogParams = [...pageParams,p('search',str('KeyCraft',100),'Подстрока названия.'),p('type',{type:'string',enum:types}),p('format',str('65',30)),p('min_price',int(0,0),'Минимальная цена в тиынах.'),p('max_price',int(2000000,0),'Максимальная цена в тиынах, не ниже min_price.'),p('in_stock',{type:'integer',enum:[0,1],example:1},'1 — наличие > 0; 0 — отсутствует. Передавайте в URL 0/1.'),p('sort',{type:'string',enum:['name','price','created_at'],default:'name'}),p('order',{type:'string',enum:['asc','desc'],default:'asc'})];
+const spec = {openapi:'3.0.3',info:{title:'KeyCraft AI Backend API',version:'1.1.0',description:'REST API курсового проекта. Все суммы — целые тиыны KZT (100 тиын = 1 тенге). Bearer токены Sanctum действуют 1440 минут; logout отзывает только текущий токен. Роли: гость — каталог и вход; buyer — собственные сборки, ИИ и заказы; admin — каталог, предложения, все заказы, роли и статистика. Администратор не получает доступ к покупательским маршрутам сборок. Внешние покупки не создают заказ на сайте. Онлайн оплаты, доставки и автопарсинга нет. JSON UTF-8. Примеры цен/остатков учебные. Поля вложенных отношений возвращаются только при загрузке соответствующей связи.'},servers:[{url:'http://127.0.0.1:8120/api/v1',description:'Локальный сервер'}],tags:[{name:'Auth'},{name:'Catalog'},{name:'Builds'},{name:'Orders'},{name:'AI'},{name:'Admin Catalog'},{name:'Admin Offers'},{name:'Admin Orders'},{name:'Admin Users'},{name:'Admin Statistics'}],paths:{},components:{securitySchemes:{bearerAuth:{type:'http',scheme:'bearer',bearerFormat:'Sanctum',description:'Authorization: Bearer <token>. Токен получают при регистрации/входе.'}},schemas}};
+const operations = [];
+function add(method,url,summary,tag,opts={}) {
+ const errors = new Set([500,...(opts.role ? [401,403] : []),...(url.includes('{') ? [404] : []),...(opts.body||opts.params ? [422] : []),...(opts.errors||[])]);
+ const code=opts.code||200; const responses={};
+ if(code===204) responses[204]={description:'Успешно, тело отсутствует.'};
+ else {
+  const schema=opts.schema ? (typeof opts.schema==='string'?ref(opts.schema):opts.schema) : envelope(opts.resource);
+  let example=opts.example || (opts.resource&&examples[opts.resource]?{data:examples[opts.resource]}:undefined);
+  if(opts.schema?.endsWith?.('Page')) {const n=opts.schema.replace('Page','');example={data:[examples[n]],links:{first:'http://127.0.0.1:8120/api/v1'+url+'?page=1',last:'http://127.0.0.1:8120/api/v1'+url+'?page=1',prev:null,next:null},meta:{current_page:1,last_page:1,per_page:20,total:1}};}
+  responses[code]={description:opts.success||'Успешно.',content:{'application/json':{schema,...(example?{example}:{})}}};
+ }
+ if(opts.replay) responses[200]={...responses[201],description:'Повтор идентичного запроса: существующий заказ, без списания остатка.'};
+ for(const status of [...errors].sort()) responses[status]=common[status]||error(status,'Ошибка');
+ const params=[...(url.match(/\{([^}]+)\}/g)||[]).map(v=>p(v.slice(1,-1),int(1),'ID ресурса.','path')),...(opts.params||[])];
+ const documentedBody=opts.bodyExample ? JSON.parse(JSON.stringify(opts.bodyExample).replaceAll('{{email}}','new-buyer@example.com').replaceAll('{{password}}','LocalExamplePassword_2026!')) : undefined;
+ const op={tags:[tag],summary,operationId:method+'_'+url.replace(/[^a-z0-9]+/gi,'_').replace(/^_|_$/g,''),description:(opts.role?'Доступ: '+opts.role+'. ':'')+(opts.description||''),security:opts.role?[{bearerAuth:[]}]:[],responses,...(params.length?{parameters:params}:{}),...(opts.body?{requestBody:{required:true,content:{'application/json':{schema:ref(opts.body),...(documentedBody?{example:documentedBody}:{})}}}}:{})};
+ (spec.paths[url]??={})[method]=op;
+ operations.push({method,url,summary,tag,opts});
+}
+const authEx={data:userExample,token:'1|token-returned-once',token_type:'Bearer'};
+add('get','/health','Проверка доступности API и БД','Catalog',{resource:'Health',errors:[503],example:{data:{name:'KeyCraft AI',time:'2026-11-07T10:00:00+00:00',database:'ok'}},description:'Публичная проверка соединения с БД. При ошибке БД — 503, сообщение «База данных недоступна».'});
+spec.paths['/health'].get.responses['503']=error(503,'База данных недоступна');
+add('post','/auth/register','Регистрация покупателя','Auth',{body:'RegisterRequest',schema:'AuthResponse',code:201,example:authEx,errors:[429],description:'Лимит регистрации и входа: общие 10 запросов в минуту на IP. Поле role запрещено. Пароль подтверждается password_confirmation: минимум 8 символов, максимум 72 байта UTF-8, без NUL.',bodyExample:{name:'Покупатель',email:'{{email}}',password:'{{password}}',password_confirmation:'{{password}}'}});
+add('post','/auth/login','Вход по email и паролю','Auth',{body:'LoginRequest',schema:'AuthResponse',example:authEx,errors:[401,429],description:'Неверный email или пароль возвращает общее сообщение без раскрытия существования email. 10 запросов в минуту на IP. Пароль не длиннее 72 байт UTF-8, без NUL; неверный формат даёт 422.',bodyExample:{email:'{{email}}',password:'{{password}}'}});
+add('get','/auth/me','Текущий пользователь','Auth',{role:'buyer или admin',resource:'User'});
+add('post','/auth/logout','Отзыв текущего токена','Auth',{role:'buyer или admin',code:204,description:'Другие токены пользователя сохраняются.'});
+add('get','/components','Каталог с поиском, фильтрами и пагинацией','Catalog',{schema:'ComponentPage',params:catalogParams,description:'По умолчанию 20 элементов, сортировка name asc. Связь offers в списке не загружается; для предложений используйте карточку или отдельный маршрут.'});
+add('get','/components/{component}','Карточка компонента','Catalog',{resource:'Component',example:{data:{...componentExample,offers:[offerExample]}}});
+add('get','/components/{component}/offers','Предложения выбранного компонента','Catalog',{schema:'OfferPage',params:pageParams,description:'Переход по URL маркетплейса не создаёт заказ KeyCraft.'});
+add('get','/builds','Список своих сборок','Builds',{role:'buyer',schema:'BuildPage',params:pageParams});
+add('post','/builds','Создать свою сборку','Builds',{role:'buyer',resource:'Build',code:201,body:'BuildCreate',bodyExample:{name:'Моя клавиатура 65%',budget:10000000},example:{data:{...buildExample,items:[]}}});
+add('get','/builds/{build}','Сборка с позициями','Builds',{role:'buyer, только владелец',resource:'Build',description:'Чужая существующая сборка — 403, отсутствующая — 404.'});
+for(const method of ['put','patch']) add(method,'/builds/{build}','Изменить название/бюджет сборки','Builds',{role:'buyer, только владелец',resource:'Build',body:'BuildUpdate',bodyExample:{name:'Обновлённая сборка',budget:10000000}});
+add('delete','/builds/{build}','Удалить свою сборку','Builds',{role:'buyer, только владелец',code:204,description:'Позиции удаляются каскадно, история заказов сохраняется (build_id становится null).'});
+add('post','/builds/{build}/items','Добавить компонент в сборку','Builds',{role:'buyer, только владелец',code:201,resource:'BuildItem',body:'BuildItemCreate',bodyExample:{component_id:1,quantity:1},errors:[409],description:'Один component_id может встречаться только один раз. Повтор — 409. Проверка полноты выполняется отдельно.'});
+add('patch','/builds/{build}/items/{item}','Изменить количество позиции','Builds',{role:'buyer, только владелец',resource:'BuildItem',body:'BuildItemUpdate',bodyExample:{quantity:1},description:'Позиция из другой сборки возвращает 404. component_id запрещён.'});
+add('delete','/builds/{build}/items/{item}','Удалить позицию','Builds',{role:'buyer, только владелец',code:204,description:'Позиция должна относиться к указанной сборке, иначе 404.'});
+add('post','/builds/{build}/validate','Проверить полноту и совместимость','Builds',{role:'buyer, только владелец',resource:'Compatibility',description:'Возвращает 200 и результат проверки даже при compatible=false. Отсутствующие характеристики перечисляются в unverified. Проверяются format, mount, switch_type, stem, layout, key_count, stabilizers. Остатки проверяет оформление заказа; эта операция их не резервирует.'});
+add('get','/orders','Список заказов','Orders',{role:'buyer (свои) или admin (все)',schema:'OrderPage',params:pageParams});
+add('get','/orders/{order}','Заказ с зафиксированными ценами','Orders',{role:'buyer-владелец или admin',resource:'Order',description:'Чужой заказ — 403. unit_price — историческая цена, component.price может измениться.'});
+add('post','/orders','Оформить полную совместимую сборку','Orders',{role:'buyer, только владелец сборки',resource:'Order',code:201,body:'OrderCreate',bodyExample:{build_id:1,expected_total:6056000},params:[{...p('Idempotency-Key',{type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9_-]+$',example:'checkout-65-001'},'Уникальный ключ в рамках покупателя.','header'),required:true}],errors:[404,409],replay:true,description:'Сумма рассчитывается сервером. 422: неполнота, несовместимость или непроверенные параметры. 409: недостаток остатка, изменившаяся сумма, тот же ключ с другим телом. При смене цены errors.current_total содержит [новая_сумма]. Для новой подтверждённой суммы нужен новый ключ. Идентичный повтор с прежним ключом и телом возвращает 200 с прежним заказом, даже если исходная сборка уже удалена. Запись заказа/позиций и списание остатков атомарны. Денежное списание не выполняется.'});
+add('post','/ai/recommendations','Подбор настоящей языковой моделью','AI',{role:'buyer',resource:'Recommendation',body:'RecommendationRequest',bodyExample:{budget:10000000,format:'65',preferences:'Тихие линейные свитчи для работы'},errors:[429,503],description:'Лимит 10 запросов/минуту на пользователя. Внешний Groq или OpenAI Responses API, таймаут 30 секунд. Ключ только на сервере. Передаются каталог, бюджет, формат и preferences; не добавляйте в preferences личные данные. Ответ модели повторно проверяется по текущим ID, количествам, совместимости, остатку и бюджету. Сборка автоматически не сохраняется, товары не резервируются. При невалидном ответе/отсутствующем ключе/сбое — 503 без имитации. Если совместимый набор не найден — 422.'});
+add('get','/admin/components','Администратор: список компонентов','Admin Catalog',{role:'admin',schema:'ComponentPage',params:catalogParams});
+add('post','/admin/components','Создать компонент','Admin Catalog',{role:'admin',resource:'Component',code:201,body:'ComponentCreate',bodyExample:{name:'Новый корпус 65%',type:'case',price:1800000,stock:20,format:'65',specs:{mount:'gasket'}}});
+add('get','/admin/components/{component}','Администратор: карточка компонента','Admin Catalog',{role:'admin',resource:'Component',example:{data:{...componentExample,offers:[offerExample]}}});
+for(const method of ['put','patch']) add(method,'/admin/components/{component}','Изменить компонент','Admin Catalog',{role:'admin',resource:'Component',body:'ComponentUpdate',bodyExample:{price:1800000,stock:20},description:'Частичное обновление. specs заменяется целиком, не объединяется.'});
+add('delete','/admin/components/{component}','Удалить неиспользуемый компонент','Admin Catalog',{role:'admin',code:204,errors:[409],description:'Если компонент есть в сборке или заказе — 409. Его предложения удаляются в той же транзакции.'});
+add('get','/admin/offers','Все предложения','Admin Offers',{role:'admin',schema:'OfferPage',params:pageParams});
+add('post','/admin/offers','Создать предложение','Admin Offers',{role:'admin',resource:'Offer',code:201,body:'OfferCreate',bodyExample:{component_id:1,marketplace:'Магазин',url:'https://example.com/keyboard-case',price:1800000,price_updated_at:'2026-11-07T10:00:00Z'}});
+add('get','/admin/offers/{offer}','Карточка предложения','Admin Offers',{role:'admin',resource:'Offer'});
+for(const method of ['put','patch']) add(method,'/admin/offers/{offer}','Изменить предложение','Admin Offers',{role:'admin',resource:'Offer',body:'OfferUpdate',bodyExample:{price:1750000,price_updated_at:'2026-11-07T10:00:00Z'}});
+add('delete','/admin/offers/{offer}','Удалить предложение','Admin Offers',{role:'admin',code:204});
+add('get','/admin/orders','Все заказы администратора','Admin Orders',{role:'admin',schema:'OrderPage',params:pageParams});
+add('patch','/admin/orders/{order}/status','Провести или отменить заказ','Admin Orders',{role:'admin',resource:'Order',body:'StatusUpdate',bodyExample:{status:'confirmed'},errors:[409],description:'Цепочка new → confirmed → assembled → issued. Отмена new/confirmed → cancelled возвращает остатки один раз в транзакции. Повтор отмены и остальные переходы — 409.'});
+add('get','/admin/users','Список пользователей','Admin Users',{role:'admin',schema:'UserPage',params:pageParams});
+add('patch','/admin/users/{user}/role','Изменить роль пользователя','Admin Users',{role:'admin',resource:'User',body:'RoleUpdate',bodyExample:{role:'buyer'},errors:[409],description:'Понижение последнего администратора запрещено (409). Роль проверяется на каждом запросе; токены не меняют роль самостоятельно.'});
+add('get','/admin/statistics','Сводка заказов и выручки','Admin Statistics',{role:'admin',resource:'Statistics',description:'orders_by_status — количество и сумма заказов по каждому существующему статусу. issued_revenue — сумма только выданных заказов. Суммы в тиынах KZT.'});
+const selectionExample={kit_id:'gmmk-pro-black',switch_id:'gateron-red',keycap_id:'gpbt-black-ash'};
+schemas.ShoppingSelection={type:'object',additionalProperties:false,required:['kit_id','switch_id','keycap_id'],properties:Object.fromEntries(Object.entries(selectionExample).map(([key,value])=>[key,{type:'string',nullable:true,example:value}]))};
+schemas.RetailOffer=obj({id:str(),merchant:str(),url:{type:'string',format:'uri',pattern:'^https://'},price:money(),currency:{type:'string',enum:['KZT']},availability:{type:'string',enum:['in_stock','out_of_stock']},checked_at:timestamp});
+schemas.RetailProduct=obj({id:str(),name:str(),brand:str(),category:{type:'string',enum:['kit','switch','keycap']},description:str(),image:str(),pack_quantity:int(undefined,1),format:{type:'string',nullable:true},key_count:{type:'integer',nullable:true},layout:{type:'string',nullable:true},sound:{type:'string',nullable:true},stale:{type:'boolean'},offers:arr(ref('RetailOffer')),best_offer:ref('RetailOffer')});
+schemas.ShoppingQuote=obj({selection:ref('ShoppingSelection'),items:arr(obj({product:ref('RetailProduct'),quantity:int(undefined,0),packs:int(undefined,0),spare:int(undefined,0),offer:ref('RetailOffer'),subtotal:money()})),total:money(),currency:{type:'string',enum:['KZT']},complete:{type:'boolean'},compatible:{type:'boolean'},issues:arr(str()),warnings:arr(str()),key_count:int(undefined,0),checked_at:timestamp,notice:str()});
+schemas.RetailRecommendationRequest={...obj({budget:money(15000000),preferences:{...str('Тихая клавиатура для работы',1000),nullable:true}},['budget']),additionalProperties:false};
+schemas.RetailRecommendation=obj({selection:ref('ShoppingSelection'),explanation:str(),quote:ref('ShoppingQuote')});
+schemas.Build.properties.shopping_plan={allOf:[ref('ShoppingSelection')],nullable:true};
+spec.paths['/builds'].get.parameters.push(p('source',{type:'string',enum:['retail']},'Только сохранённые списки покупок реальных товаров. Без параметра — все свои сборки.'));
+add('get','/retail/products','Реальные комплектующие и предложения магазинов','Retail',{schema:{type:'object',required:['data'],properties:{data:arr(ref('RetailProduct'))}},params:[p('category',{type:'string',enum:['kit','switch','keycap']},'Категория'),p('search',str(undefined,100),'Поиск'),p('in_stock',{type:'boolean'},'Есть доступное предложение')],description:'Проверенный вручную снимок восьми моделей. Цены в тиынах, наличие на checked_at. stale=true через семь дней. Заказ и оплата на стороне продавца.'});
+add('post','/retail/quote','Рассчитать список покупок','Retail',{body:'ShoppingSelection',resource:'ShoppingQuote',bodyExample:selectionExample,description:'Публичный расчёт по серверному каталогу. Все три поля обязательны, значение null разрешает неполный черновик. Для 82 клавиш упаковки по36 округляются вверх до3. Цена, total и user_id от клиента запрещены. Доставку подтверждает магазин.'});
+add('get','/builds/{build}/shopping-plan','Получить расчёт сохранённого списка','Retail',{role:'buyer, только владелец',resource:'ShoppingQuote',errors:[409],description:'Текущий расчёт по shopping_plan сборки. Не создаёт заказ у продавца.'});
+add('put','/builds/{build}/shopping-plan','Сохранить выбор реальных товаров','Retail',{role:'buyer, только владелец',body:'ShoppingSelection',resource:'ShoppingQuote',bodyExample:selectionExample,errors:[409],description:'Сохраняет ID в builds.shopping_plan, возвращает расчёт, сервер проверяет категории. Смешивание с прежними складскими items запрещено409. Такой список нельзя оформить через /orders.'});
+add('post','/retail/recommendations','ИИ подбор реальных комплектующих','Retail',{role:'buyer',body:'RetailRecommendationRequest',resource:'RetailRecommendation',bodyExample:{budget:15000000,preferences:'Тихая клавиатура для работы'},errors:[429,503],description:'Сервер обращается к настроенному Groq/OpenAI и проверяет возвращённые ID, совместимость и бюджет. Ключ не передаётся браузеру. Недоступность провайдера даёт503, превышение бюджета422. Внешний платный провайдер автоматически не подставляется.'});
+fs.writeFileSync(path.join(out,'openapi.json'),JSON.stringify(spec,null,2)+'\n');
+
+const tokenScript = ['if ([200, 201].includes(pm.response.code)) {','  const body = pm.response.json();','  if (body.token) pm.collectionVariables.set("token", body.token);','  if (body.data && body.data.id) pm.collectionVariables.set("user_id", String(body.data.id));','}'];
+const saveId = key => ['if ([200, 201].includes(pm.response.code)) {','  const body = pm.response.json();','  if (body.data && body.data.id) pm.collectionVariables.set("'+key+'", String(body.data.id));','}'];
+const folderNames = {'Auth':'01. Вход и текущий пользователь','Catalog':'02. Открытый каталог','Builds':'03. Сборки — buyer','Orders':'04. Заказы — buyer/admin','AI':'05. Настоящий ИИ — buyer','Admin Catalog':'06. Каталог — admin','Admin Offers':'07. Предложения — admin','Admin Orders':'08. Заказы — admin','Admin Users':'09. Пользователи — admin','Admin Statistics':'10. Статистика — admin'};
+folderNames.Retail='12. Реальные товары и списки покупок';
+const folders = Object.fromEntries(Object.entries(folderNames).map(([tag,name])=>[tag,{name,description:tag.startsWith('Admin')?'Нужен токен администратора: выполните вход с admin_email/admin_password. Изменения настоящие, выполняйте запросы по одному на локальных данных.':'Запросы выполняйте по одному. Примеры ID относятся к свежему локальному каталогу.',item:[]}]));
+function postmanItem(op) {
+ const {method,url,summary,opts}=op;
+ let pathname=url.replace(/\{component\}/g,'{{component_id}}').replace(/\{build\}/g,'{{build_id}}').replace(/\{item\}/g,'{{item_id}}').replace(/\{order\}/g,'{{order_id}}').replace(/\{offer\}/g,'{{offer_id}}').replace(/\{user\}/g,'{{user_id}}');
+ const isAdminComponent=op.tag==='Admin Catalog'&&url.includes('{component}');
+ if(isAdminComponent) pathname=pathname.replace('{{component_id}}','{{admin_component_id}}');
+ const headers=[{key:'Accept',value:'application/json'}];
+ if(opts.body) headers.push({key:'Content-Type',value:'application/json'});
+ if(url==='/orders'&&method==='post') headers.push({key:'Idempotency-Key',value:'{{idempotency_key}}'});
+ let body=opts.bodyExample;
+ if(body) {body={...body};if('component_id' in body)body.component_id='{{component_id}}';if('build_id'in body)body.build_id='{{build_id}}';}
+ const request={method:method.toUpperCase(),header:headers,url:'{{base_url}}'+pathname,description:(opts.role?'Доступ: '+opts.role+'. ':'')+(opts.description||'')+(url.startsWith('/auth/register')?' Смена роли при регистрации запрещена.':''),...(opts.role?{}:{auth:{type:'noauth'}})};
+ if(body) {let raw=JSON.stringify(body,null,2).replace(/"\{\{(component_id|build_id)\}\}"/g,'{{$1}}');request.body={mode:'raw',raw,options:{raw:{language:'json'}}};}
+ if(opts.params===catalogParams) request.url += '?format=65&in_stock=1&sort=price&order=asc&per_page=20&page=1';
+ else if(opts.params===pageParams) request.url += '?page=1&per_page=20';
+ const item={name:method.toUpperCase()+' '+summary,request,response:Object.entries(spec.paths[url][method].responses).map(([code,response])=>({
+  name: code+' '+response.description,
+  originalRequest: JSON.parse(JSON.stringify(request)),
+  status: ({200:'OK',201:'Created',204:'No Content',400:'Bad Request',401:'Unauthorized',403:'Forbidden',404:'Not Found',409:'Conflict',422:'Unprocessable Content',429:'Too Many Requests',500:'Internal Server Error',503:'Service Unavailable'})[code]||'Response',
+  code:Number(code),header:Number(code)===204?[]:[{key:'Content-Type',value:'application/json'}],
+  _postman_previewlanguage:'json',
+  body:Number(code)===204?'':JSON.stringify(response.content?.['application/json']?.example||{},null,2),
+}))};
+ let script;
+ if(url==='/auth/register'||url==='/auth/login') script=tokenScript;
+ else if(method==='post'&&url==='/builds') script=saveId('build_id');
+ else if(method==='post'&&url==='/builds/{build}/items') script=saveId('item_id');
+ else if(method==='post'&&url==='/orders') script=saveId('order_id');
+ else if(method==='post'&&url==='/admin/components') script=saveId('admin_component_id');
+ else if(method==='post'&&url==='/admin/offers') script=saveId('offer_id');
+ if(script)item.event=[{listen:'test',script:{type:'text/javascript',exec:script}}];
+ return item;
+}
+let logout;
+for(const op of operations) {const item=postmanItem(op);if(op.url==='/auth/logout')logout=item;else folders[op.tag].item.push(item);}
+// An explicit administrator login makes role switching visible and never hard-codes a password.
+const adminLogin=postmanItem(operations.find(o=>o.url==='/auth/login'));
+adminLogin.name='POST Вход администратора (сменит token)';
+adminLogin.request.body.raw=JSON.stringify({email:'{{admin_email}}',password:'{{admin_password}}'},null,2);
+adminLogin.event=[{listen:'test',script:{type:'text/javascript',exec:tokenScript.filter(line=>!line.includes('user_id'))}}];
+folders['Admin Catalog'].item.unshift(adminLogin);
+const addItemOp=operations.find(o=>o.url==='/builds/{build}/items'&&o.method==='post');
+const fullBuildFolder={name:'03b. Наполнить свежую сборку 65% (ID 1–6)',description:'После POST /builds выполните эти 6 запросов. ID действуют только для свежего DatabaseSeeder: case1 pcb2 plate3 stabilizer4 switch5 keycap6. При другом каталоге замените ID. Не запускайте после общего запроса добавления case, иначе ожидается 409 повтора.',item:types.map((type,i)=>{const v=postmanItem(addItemOp);v.name=`POST ${type} × ${type==='switch'?67:1}`;v.request.body.raw=JSON.stringify({component_id:i+1,quantity:type==='switch'?67:1},null,2);return v;})};
+const ordered=[];for(const [tag,f]of Object.entries(folders)){ordered.push(f);if(tag==='Builds')ordered.push(fullBuildFolder);}
+ordered.push({name:'11. Выход',item:[logout]});
+const collection={info:{name:'KeyCraft AI — Backend API',description:'Локальная коллекция всех API операций. Импортируйте в Postman, задайте email/password для покупателя и admin_email/admin_password для администратора. Секреты не включены. base_url уже включает /api/v1. Регистрация и вход автоматически сохраняют token, регистрация/вход покупателя также user_id. Создание сборки/позиции/заказа/предложения сохраняет ID. Все деньги — целые тиыны KZT. Перед checkout проверьте сборку и обновите expected_total; 6056000 — учебный набор65. Повтор идентичного checkout с тем же idempotency_key возвращает200 без двойного списания; для новой покупки задайте новый ключ. Запросы изменяют локальные данные: выполняйте по одному, это не безопасный автоматический runner для существующей БД. Админ-каталог использует admin_component_id созданного тестового компонента; публичный каталог и сборки используют component_id. ИИ требует настройки серверного ключа и возвращает503 без него. Полный контракт: openapi.json.',schema:'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'},auth:{type:'bearer',bearer:[{key:'token',value:'{{token}}',type:'string'}]},variable:Object.entries({base_url:'http://127.0.0.1:8120/api/v1',token:'',email:'buyer@keycraft.test',password:'',admin_email:'admin@keycraft.test',admin_password:'',component_id:'1',admin_component_id:'',build_id:'1',item_id:'1',order_id:'1',offer_id:'1',user_id:'2',idempotency_key:'checkout-65-001'}).map(([key,value])=>({key,value,type:'string'})),item:ordered};
+fs.writeFileSync(path.join(out,'KeyCraft.postman_collection.json'),JSON.stringify(collection,null,2)+'\n');
+console.log(JSON.stringify({paths:Object.keys(spec.paths).length,operations:operations.length,postmanRequests:operations.length+7}));
+
