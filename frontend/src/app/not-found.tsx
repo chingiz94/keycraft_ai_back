@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function NotFound(){return <section className="error-page"><p className="eyebrow">404 / Не та клавиша</p><h1>Этой страницы пока нет.</h1><p>Вернитесь в каталог или продолжите свою сборку.</p><div className="actions justify-center"><Link className="button" href="/">На главную ↗</Link><Link className="button secondary" href="/catalog">Комплектующие</Link></div></section>;}

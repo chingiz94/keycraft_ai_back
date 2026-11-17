@@ -1,0 +1,13 @@
+export type User = { id:number;name:string;email:string;role:'buyer'|'admin' };
+export type Offer = {id:string;merchant:string;url:string;price:number;currency:'KZT';availability:'in_stock'|'out_of_stock';checked_at:string;source_image?:string};
+export type Product = {id:string;name:string;brand:string;category:'kit'|'switch'|'keycap';description:string;image:string;pack_quantity:number;format:string|null;key_count:number|null;layout:string|null;sound:string|null;stale:boolean;offers:Offer[];best_offer:Offer};
+export type Selection = {kit_id:string|null;switch_id:string|null;keycap_id:string|null};
+export type Draft = Selection & {name:string;budget:number;buildId?:number;ownerId?:number};
+export type ShoppingRow = {product:Product;quantity:number;packs:number;spare:number;offer:Offer;subtotal:number};
+export type Quote = {selection:Selection;items:ShoppingRow[];total:number;currency:string;complete:boolean;compatible:boolean;issues:string[];warnings:string[];key_count:number;checked_at:string;notice:string};
+export type Build = {id:number;name:string;budget:number;shopping_plan:Selection|null;created_at:string};
+export type PageMeta = {current_page:number;last_page:number;total:number;per_page:number};
+export type ApiRecord = {id:number;name?:string;email?:string;role?:string;type?:string;format?:string|null;price?:number;stock?:number;specs?:Record<string,unknown>;component_id?:number;marketplace?:string;url?:string;price_updated_at?:string;status?:string;total?:number;user_id?:number;build_id?:number|null;created_at?:string;items?:Array<{id:number;quantity:number;unit_price:number;component:{name:string}}>};
+export const categories = {kit:'Основа',switch:'Свитчи',keycap:'Кейкапы'};
+export const partTypes = {case:'Корпус',pcb:'Плата',plate:'Плейт',stabilizer:'Стабилизаторы',switch:'Свитчи',keycap:'Кейкапы'};
+export const statuses = {new:'Новый',confirmed:'Подтверждён',assembled:'Собран',issued:'Выдан',cancelled:'Отменён'};
