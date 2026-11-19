@@ -23,7 +23,49 @@ export function Hero(){
   return()=>media.revert();
  },{scope:ref});
  const toggle=()=>contextSafe(()=>{open.current=!open.current;setExpanded(open.current);const select=gsap.utils.selector(ref);const duration=window.matchMedia('(prefers-reduced-motion:reduce)').matches?0:.7;gsap.timeline({defaults:{duration,ease:'power3.inOut',overwrite:'auto'}}).to(select('.layer-caps'),{z:open.current?155:18},0).to(select('.layer-plate'),{z:open.current?90:7},0).to(select('.layer-pcb'),{z:open.current?35:2},0);})();
- return <section ref={ref} className="retail-hero"><div className="retail-hero-copy"><p className="eyebrow hero-enter"><span className="live-dot"/>KeyCraft AI / Собери своё</p><h1 className="hero-enter">Твой ритм.<br/><em>Твоя клавиатура.</em></h1><p className="hero-enter hero-description">От первого свитча до последнего кейкапа.<br/>Подберите детали, которые звучат и ощущаются по-вашему.</p><div className="hero-enter hero-actions"><Link className="button" href="/builder">Собрать клавиатуру <span aria-hidden="true">↗</span></Link><Link className="under-link" href="/catalog">Посмотреть детали</Link></div><div className="hero-enter hero-foot"><span>01 — ВЫБЕРИТЕ</span><span>02 — СОБЕРИТЕ</span><span>03 — ЗАКАЖИТЕ</span></div></div><div className="keyboard-stage" aria-label="Интерактивная схема механической клавиатуры"><div className="stage-ring" aria-hidden="true"/><span className="stage-caption">СОЗДАНА ПОД ВАС / 75%</span><div className="keyboard-float" aria-hidden="true"><div className="keyboard-tilt"><div className="keyboard-body"/><div className="layer-pcb"/><div className="layer-plate"/><div className="layer-caps">{rows.map((row,i)=><div className={`hero-key-row row-${i}`} key={i}>{row.map((key,j)=><span className={`hero-key ${['esc','enter','↑','←','↓','→'].includes(key)?'key-green':''} ${key==='space'?'key-space':''}`} key={j} style={{'--grow':key==='space'?6.25:['⌫','enter','shift'].includes(key)?1.8:['tab','caps'].includes(key)?1.45:1} as CSSProperties}>{key==='space'?'keycraft':key}</span>)}</div>)}</div><span className="keyboard-knob"/></div></div><div className="stage-bottom"><span>Корпус. Свитчи. Ваш характер.</span><button aria-pressed={expanded} onClick={toggle}>{expanded?'Собрать обратно ↙':'Разобрать по слоям ↗'}</button></div></div></section>;
+ return (
+  <section ref={ref} className="retail-hero">
+   <div className="retail-hero-copy">
+    <h1 className="hero-enter">Соберите <em>свою клавиатуру</em></h1>
+    <p className="hero-enter hero-description">
+     Выберите основу, свитчи и кейкапы. Конструктор проверит совместимость и рассчитает количество упаковок.
+    </p>
+    <div className="hero-enter hero-actions">
+     <Link className="button" href="/builder">В конструктор <span aria-hidden="true">↗</span></Link>
+     <Link className="under-link" href="/catalog">Смотреть каталог</Link>
+    </div>
+   </div>
+   <div className="keyboard-stage" role="group" aria-label="Интерактивная схема механической клавиатуры">
+    <div className="stage-ring" aria-hidden="true" />
+    <div className="keyboard-float" aria-hidden="true">
+     <div className="keyboard-tilt">
+      <div className="keyboard-body" />
+      <div className="layer-pcb" />
+      <div className="layer-plate" />
+      <div className="layer-caps">
+       {rows.map((row, i) => (
+        <div className={`hero-key-row row-${i}`} key={i}>
+         {row.map((key, j) => (
+          <span
+           className={`hero-key ${['esc','enter','↑','←','↓','→'].includes(key) ? 'key-green' : ''} ${key === 'space' ? 'key-space' : ''}`}
+           key={j}
+           style={{ '--grow': key === 'space' ? 6.25 : ['⌫','enter','shift'].includes(key) ? 1.8 : ['tab','caps'].includes(key) ? 1.45 : 1 } as CSSProperties}
+          >
+           {key === 'space' ? 'keycraft' : key}
+          </span>
+         ))}
+        </div>
+       ))}
+      </div>
+      <span className="keyboard-knob" />
+     </div>
+    </div>
+    <div className="stage-bottom">
+     <button className="secondary small" aria-pressed={expanded} onClick={toggle}>Показать слои</button>
+    </div>
+   </div>
+  </section>
+ );
 }
 export function Reveal({children,className='',count=0}:{children:ReactNode;className?:string;count?:number}){
  const ref=useRef<HTMLDivElement>(null);

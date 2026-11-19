@@ -62,7 +62,6 @@ const p = (name,schema,description,where='query') => ({name,in:where,required:wh
 const pageParams = [p('page',int(1),'Номер страницы, начиная с 1.'),p('per_page',int(20,1,100),'По умолчанию 20; 1–100.')];
 const catalogParams = [...pageParams,p('search',str('KeyCraft',100),'Подстрока названия.'),p('type',{type:'string',enum:types}),p('format',str('65',30)),p('min_price',int(0,0),'Минимальная цена в тиынах.'),p('max_price',int(2000000,0),'Максимальная цена в тиынах, не ниже min_price.'),p('in_stock',{type:'integer',enum:[0,1],example:1},'1 — наличие > 0; 0 — отсутствует. Передавайте в URL 0/1.'),p('sort',{type:'string',enum:['name','price','created_at'],default:'name'}),p('order',{type:'string',enum:['asc','desc'],default:'asc'})];
 const spec = {openapi:'3.0.3',info:{title:'KeyCraft AI Backend API',version:'1.1.0',description:'REST API курсового проекта. Все суммы — целые тиыны KZT (100 тиын = 1 тенге). Bearer токены Sanctum действуют 1440 минут; logout отзывает только текущий токен. Роли: гость — каталог и вход; buyer — собственные сборки, ИИ и заказы; admin — каталог, предложения, все заказы, роли и статистика. Администратор не получает доступ к покупательским маршрутам сборок. Внешние покупки не создают заказ на сайте. Онлайн оплаты, доставки и автопарсинга нет. JSON UTF-8. Примеры цен/остатков учебные. Поля вложенных отношений возвращаются только при загрузке соответствующей связи.'},servers:[{url:'http://127.0.0.1:8120/api/v1',description:'Локальный сервер'}],tags:[{name:'Auth'},{name:'Catalog'},{name:'Builds'},{name:'Orders'},{name:'AI'},{name:'Admin Catalog'},{name:'Admin Offers'},{name:'Admin Orders'},{name:'Admin Users'},{name:'Admin Statistics'}],paths:{},components:{securitySchemes:{bearerAuth:{type:'http',scheme:'bearer',bearerFormat:'Sanctum',description:'Authorization: Bearer <token>. Токен получают при регистрации/входе.'}},schemas}};
-const operations = [];
 function add(method,url,summary,tag,opts={}) {
  const errors = new Set([500,...(opts.role ? [401,403] : []),...(url.includes('{') ? [404] : []),...(opts.body||opts.params ? [422] : []),...(opts.errors||[])]);
  const code=opts.code||200; const responses={};
@@ -79,7 +78,6 @@ function add(method,url,summary,tag,opts={}) {
  const documentedBody=opts.bodyExample ? JSON.parse(JSON.stringify(opts.bodyExample).replaceAll('{{email}}','new-buyer@example.com').replaceAll('{{password}}','LocalExamplePassword_2026!')) : undefined;
  const op={tags:[tag],summary,operationId:method+'_'+url.replace(/[^a-z0-9]+/gi,'_').replace(/^_|_$/g,''),description:(opts.role?'Доступ: '+opts.role+'. ':'')+(opts.description||''),security:opts.role?[{bearerAuth:[]}]:[],responses,...(params.length?{parameters:params}:{}),...(opts.body?{requestBody:{required:true,content:{'application/json':{schema:ref(opts.body),...(documentedBody?{example:documentedBody}:{})}}}}:{})};
  (spec.paths[url]??={})[method]=op;
- operations.push({method,url,summary,tag,opts});
 }
 const authEx={data:userExample,token:'1|token-returned-once',token_type:'Bearer'};
 add('get','/health','Проверка доступности API и БД','Catalog',{resource:'Health',errors:[503],example:{data:{name:'KeyCraft AI',time:'2026-11-07T10:00:00+00:00',database:'ok'}},description:'Публичная проверка соединения с БД. При ошибке БД — 503, сообщение «База данных недоступна».'});
@@ -134,57 +132,3 @@ add('get','/builds/{build}/shopping-plan','Получить расчёт сох�
 add('put','/builds/{build}/shopping-plan','Сохранить выбор реальных товаров','Retail',{role:'buyer, только владелец',body:'ShoppingSelection',resource:'ShoppingQuote',bodyExample:selectionExample,errors:[409],description:'Сохраняет ID в builds.shopping_plan, возвращает расчёт, сервер проверяет категории. Смешивание с прежними складскими items запрещено409. Такой список нельзя оформить через /orders.'});
 add('post','/retail/recommendations','ИИ подбор реальных комплектующих','Retail',{role:'buyer',body:'RetailRecommendationRequest',resource:'RetailRecommendation',bodyExample:{budget:15000000,preferences:'Тихая клавиатура для работы'},errors:[429,503],description:'Сервер обращается к настроенному Groq/OpenAI и проверяет возвращённые ID, совместимость и бюджет. Ключ не передаётся браузеру. Недоступность провайдера даёт503, превышение бюджета422. Внешний платный провайдер автоматически не подставляется.'});
 fs.writeFileSync(path.join(out,'openapi.json'),JSON.stringify(spec,null,2)+'\n');
-
-const tokenScript = ['if ([200, 201].includes(pm.response.code)) {','  const body = pm.response.json();','  if (body.token) pm.collectionVariables.set("token", body.token);','  if (body.data && body.data.id) pm.collectionVariables.set("user_id", String(body.data.id));','}'];
-const saveId = key => ['if ([200, 201].includes(pm.response.code)) {','  const body = pm.response.json();','  if (body.data && body.data.id) pm.collectionVariables.set("'+key+'", String(body.data.id));','}'];
-const folderNames = {'Auth':'01. Вход и текущий пользователь','Catalog':'02. Открытый каталог','Builds':'03. Сборки — buyer','Orders':'04. Заказы — buyer/admin','AI':'05. Настоящий ИИ — buyer','Admin Catalog':'06. Каталог — admin','Admin Offers':'07. Предложения — admin','Admin Orders':'08. Заказы — admin','Admin Users':'09. Пользователи — admin','Admin Statistics':'10. Статистика — admin'};
-folderNames.Retail='12. Реальные товары и списки покупок';
-const folders = Object.fromEntries(Object.entries(folderNames).map(([tag,name])=>[tag,{name,description:tag.startsWith('Admin')?'Нужен токен администратора: выполните вход с admin_email/admin_password. Изменения настоящие, выполняйте запросы по одному на локальных данных.':'Запросы выполняйте по одному. Примеры ID относятся к свежему локальному каталогу.',item:[]}]));
-function postmanItem(op) {
- const {method,url,summary,opts}=op;
- let pathname=url.replace(/\{component\}/g,'{{component_id}}').replace(/\{build\}/g,'{{build_id}}').replace(/\{item\}/g,'{{item_id}}').replace(/\{order\}/g,'{{order_id}}').replace(/\{offer\}/g,'{{offer_id}}').replace(/\{user\}/g,'{{user_id}}');
- const isAdminComponent=op.tag==='Admin Catalog'&&url.includes('{component}');
- if(isAdminComponent) pathname=pathname.replace('{{component_id}}','{{admin_component_id}}');
- const headers=[{key:'Accept',value:'application/json'}];
- if(opts.body) headers.push({key:'Content-Type',value:'application/json'});
- if(url==='/orders'&&method==='post') headers.push({key:'Idempotency-Key',value:'{{idempotency_key}}'});
- let body=opts.bodyExample;
- if(body) {body={...body};if('component_id' in body)body.component_id='{{component_id}}';if('build_id'in body)body.build_id='{{build_id}}';}
- const request={method:method.toUpperCase(),header:headers,url:'{{base_url}}'+pathname,description:(opts.role?'Доступ: '+opts.role+'. ':'')+(opts.description||'')+(url.startsWith('/auth/register')?' Смена роли при регистрации запрещена.':''),...(opts.role?{}:{auth:{type:'noauth'}})};
- if(body) {let raw=JSON.stringify(body,null,2).replace(/"\{\{(component_id|build_id)\}\}"/g,'{{$1}}');request.body={mode:'raw',raw,options:{raw:{language:'json'}}};}
- if(opts.params===catalogParams) request.url += '?format=65&in_stock=1&sort=price&order=asc&per_page=20&page=1';
- else if(opts.params===pageParams) request.url += '?page=1&per_page=20';
- const item={name:method.toUpperCase()+' '+summary,request,response:Object.entries(spec.paths[url][method].responses).map(([code,response])=>({
-  name: code+' '+response.description,
-  originalRequest: JSON.parse(JSON.stringify(request)),
-  status: ({200:'OK',201:'Created',204:'No Content',400:'Bad Request',401:'Unauthorized',403:'Forbidden',404:'Not Found',409:'Conflict',422:'Unprocessable Content',429:'Too Many Requests',500:'Internal Server Error',503:'Service Unavailable'})[code]||'Response',
-  code:Number(code),header:Number(code)===204?[]:[{key:'Content-Type',value:'application/json'}],
-  _postman_previewlanguage:'json',
-  body:Number(code)===204?'':JSON.stringify(response.content?.['application/json']?.example||{},null,2),
-}))};
- let script;
- if(url==='/auth/register'||url==='/auth/login') script=tokenScript;
- else if(method==='post'&&url==='/builds') script=saveId('build_id');
- else if(method==='post'&&url==='/builds/{build}/items') script=saveId('item_id');
- else if(method==='post'&&url==='/orders') script=saveId('order_id');
- else if(method==='post'&&url==='/admin/components') script=saveId('admin_component_id');
- else if(method==='post'&&url==='/admin/offers') script=saveId('offer_id');
- if(script)item.event=[{listen:'test',script:{type:'text/javascript',exec:script}}];
- return item;
-}
-let logout;
-for(const op of operations) {const item=postmanItem(op);if(op.url==='/auth/logout')logout=item;else folders[op.tag].item.push(item);}
-// An explicit administrator login makes role switching visible and never hard-codes a password.
-const adminLogin=postmanItem(operations.find(o=>o.url==='/auth/login'));
-adminLogin.name='POST Вход администратора (сменит token)';
-adminLogin.request.body.raw=JSON.stringify({email:'{{admin_email}}',password:'{{admin_password}}'},null,2);
-adminLogin.event=[{listen:'test',script:{type:'text/javascript',exec:tokenScript.filter(line=>!line.includes('user_id'))}}];
-folders['Admin Catalog'].item.unshift(adminLogin);
-const addItemOp=operations.find(o=>o.url==='/builds/{build}/items'&&o.method==='post');
-const fullBuildFolder={name:'03b. Наполнить свежую сборку 65% (ID 1–6)',description:'После POST /builds выполните эти 6 запросов. ID действуют только для свежего DatabaseSeeder: case1 pcb2 plate3 stabilizer4 switch5 keycap6. При другом каталоге замените ID. Не запускайте после общего запроса добавления case, иначе ожидается 409 повтора.',item:types.map((type,i)=>{const v=postmanItem(addItemOp);v.name=`POST ${type} × ${type==='switch'?67:1}`;v.request.body.raw=JSON.stringify({component_id:i+1,quantity:type==='switch'?67:1},null,2);return v;})};
-const ordered=[];for(const [tag,f]of Object.entries(folders)){ordered.push(f);if(tag==='Builds')ordered.push(fullBuildFolder);}
-ordered.push({name:'11. Выход',item:[logout]});
-const collection={info:{name:'KeyCraft AI — Backend API',description:'Локальная коллекция всех API операций. Импортируйте в Postman, задайте email/password для покупателя и admin_email/admin_password для администратора. Секреты не включены. base_url уже включает /api/v1. Регистрация и вход автоматически сохраняют token, регистрация/вход покупателя также user_id. Создание сборки/позиции/заказа/предложения сохраняет ID. Все деньги — целые тиыны KZT. Перед checkout проверьте сборку и обновите expected_total; 6056000 — учебный набор65. Повтор идентичного checkout с тем же idempotency_key возвращает200 без двойного списания; для новой покупки задайте новый ключ. Запросы изменяют локальные данные: выполняйте по одному, это не безопасный автоматический runner для существующей БД. Админ-каталог использует admin_component_id созданного тестового компонента; публичный каталог и сборки используют component_id. ИИ требует настройки серверного ключа и возвращает503 без него. Полный контракт: openapi.json.',schema:'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'},auth:{type:'bearer',bearer:[{key:'token',value:'{{token}}',type:'string'}]},variable:Object.entries({base_url:'http://127.0.0.1:8120/api/v1',token:'',email:'buyer@keycraft.test',password:'',admin_email:'admin@keycraft.test',admin_password:'',component_id:'1',admin_component_id:'',build_id:'1',item_id:'1',order_id:'1',offer_id:'1',user_id:'2',idempotency_key:'checkout-65-001'}).map(([key,value])=>({key,value,type:'string'})),item:ordered};
-fs.writeFileSync(path.join(out,'KeyCraft.postman_collection.json'),JSON.stringify(collection,null,2)+'\n');
-console.log(JSON.stringify({paths:Object.keys(spec.paths).length,operations:operations.length,postmanRequests:operations.length+7}));
-

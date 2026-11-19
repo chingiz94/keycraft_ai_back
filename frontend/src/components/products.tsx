@@ -15,6 +15,50 @@ export function useCatalog(){
 export function ProductImage({product,className=''}:{product:Product;className?:string}){return <Image unoptimized className={className} src={'/'+product.image} alt={product.name} width={520} height={400}/>;}
 export function OfferLink({offer,className='text-link'}:{offer:Offer;className?:string}){return <a className={className} href={httpsLink(offer.url)} target="_blank" rel="noopener noreferrer">{offer.availability==='in_stock'?'Купить в ':'Карточка: '}{offer.merchant} <span aria-hidden="true">↗</span></a>;}
 export const stockLabel=(offer:Offer)=>offer.availability==='in_stock'?'Был в наличии при проверке':'Нет в наличии у продавца';
-export function ProductCard({product,onDetail,onSelect}:{product:Product;onDetail:(product:Product)=>void;onSelect:(product:Product)=>void}){return <article className="retail-card"><button className="product-photo" onClick={()=>onDetail(product)} aria-label={`Подробнее: ${product.name}`}><ProductImage product={product}/><span className="photo-plus" aria-hidden="true">↗</span></button><div className="product-topline"><span>{categories[product.category]}</span><span>{product.category==='switch'?`${product.pack_quantity} шт.`:product.category==='kit'?`${product.format}% · ${product.key_count} клавиш`:`Кейкапы · ${product.keycap_profile||'профиль уточнить'}`}</span></div><h3><button className="name-button" onClick={()=>onDetail(product)}>{product.name}</button></h3><div className="retail-price">{money(product.best_offer.price)}<small>за {product.category==='switch'?'упаковку':'комплект'}</small></div><div className={`retail-stock ${product.best_offer.availability==='in_stock'?'':'unavailable'}`}>{product.stale?'Уточнить наличие':stockLabel(product.best_offer)}</div><div className="retail-card-actions"><button className="secondary small" onClick={()=>onSelect(product)}>В сборку <span aria-hidden="true">+</span></button><OfferLink offer={product.best_offer}/></div></article>;}
+export function ProductCard({
+  product,
+  onDetail,
+  onSelect,
+}: {
+  product: Product;
+  onDetail: (product: Product) => void;
+  onSelect: (product: Product) => void;
+}) {
+  const details = {
+    kit: `${product.format}% · ${product.key_count} клавиш`,
+    switch: `${product.pack_quantity} шт.`,
+    keycap: product.keycap_profile || 'Профиль уточняется',
+  };
+  const offer = product.best_offer;
+
+  return (
+    <article className="retail-card">
+      <button className="product-photo" onClick={() => onDetail(product)} aria-label={`Подробнее: ${product.name}`}>
+        <ProductImage product={product} />
+        <span className="photo-plus" aria-hidden="true">↗</span>
+      </button>
+      <div className="product-topline">
+        <span>{categories[product.category]}</span>
+        <span>{details[product.category]}</span>
+      </div>
+      <h3>
+        <button className="name-button" onClick={() => onDetail(product)}>{product.name}</button>
+      </h3>
+      <div className="retail-price">
+        {money(offer.price)}
+        <small>за {product.category === 'switch' ? 'упаковку' : 'комплект'}</small>
+      </div>
+      <div className={`retail-stock ${offer.availability === 'in_stock' ? '' : 'unavailable'}`}>
+        {product.stale ? 'Уточнить наличие' : stockLabel(offer)}
+      </div>
+      <div className="retail-card-actions">
+        <button className="secondary small" onClick={() => onSelect(product)}>
+          В сборку <span aria-hidden="true">+</span>
+        </button>
+        <OfferLink offer={offer} />
+      </div>
+    </article>
+  );
+}
 export function useProductSelection(){const{draft,setDraft}=useStore();const router=useRouter();return(product:Product)=>{setDraft({...draft,[`${product.category}_id`]:product.id});router.push('/builder');};}
 export function ProductDetail({product,onClose,onSelect}:{product:Product;onClose:()=>void;onSelect:(product:Product)=>void}){return <Modal title={product.name} onClose={onClose}><div className="product-detail"><ProductImage product={product}/><div><p className="eyebrow">{categories[product.category]} / {product.brand}</p><h2>{product.name}</h2><p>{product.description}</p><dl className="specs"><dt>Комплектность</dt><dd>{product.category==='switch'?`${product.pack_quantity} свитчей в упаковке`:product.category==='kit'?'Основа без свитчей и кейкапов':'Один набор кейкапов'}</dd><dt>Совместимость</dt><dd>{product.category==='kit'?`${product.format}% ANSI, ${product.key_count} клавиш, механические MX`:product.category==='switch'?'Стандартные механические MX 3/5 pin':product.compatibility_note}</dd></dl><button onClick={()=>{onClose();onSelect(product);}}>Добавить в сборку +</button></div></div><h3>Где купить</h3><div className="store-offers">{product.offers.map(offer=><div className="store-offer" key={offer.id}><div><strong>{offer.merchant}</strong><small className={offer.availability==='in_stock'?'':'unavailable'}>{stockLabel(offer)} · {checkedDate(offer.checked_at)}</small></div><strong>{money(offer.price)}</strong><OfferLink offer={offer} className="button secondary small"/></div>)}</div><p className="source-note">Цена за {product.category==='switch'?'упаковку':'комплект'}. Наличие в городе, доставку и итоговую стоимость подтверждает продавец.</p></Modal>;}
